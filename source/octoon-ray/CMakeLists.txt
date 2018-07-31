@@ -5,6 +5,8 @@ SET(SOURCE_PATH ${OCTOON_RAY_PATH_SOURCE}/${LIB_NAME})
 
 SET(OCTOON_RAY_LIST
 	${SOURCE_PATH}/main.cpp
+	${SOURCE_PATH}/tiny_obj_loader.cpp
+	${SOURCE_PATH}/tiny_obj_loader.h
 )
 SOURCE_GROUP("octoon-ray" FILES ${OCTOON_RAY_LIST})
 
@@ -12,4 +14,4 @@ add_executable(${LIB_NAME} ${OCTOON_RAY_LIST})
 
 TARGET_LINK_LIBRARIES(${LIB_NAME} PUBLIC RadeonRays)
 
-#SET_TARGET_ATTRIBUTE(${LIB_NAME} "octoon")
+SET_TARGET_ATTRIBUTE(${LIB_NAME} "octoon")
