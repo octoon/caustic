@@ -2,8 +2,6 @@
 #include <assert.h>
 #include <fstream>
 
-using namespace RadeonRays;
-
 namespace 
 {
 	float const g_vertices[] = {
@@ -18,26 +16,18 @@ namespace
 	};
 	int const g_indices[] = { 0, 1, 2 };
 	const int g_numfaceverts[] = { 3 };
-	const float3 g_color = { 1.f, 0.f, 0.f, 1.f };
+	const RadeonRays::float3 g_color = { 1.f, 0.f, 0.f, 1.f };
 	unsigned int g_vertex_buffer, g_index_buffer;
 	unsigned int g_texture;
 	int g_window_width = 640;
 	int g_window_height = 480;
 }
 
-float3 ConvertFromBarycentric(const float* vec, const int* ind, int prim_id, const float4& uvwt)
+RadeonRays::float3 ConvertFromBarycentric(const float* vec, const int* ind, int prim_id, const RadeonRays::float4& uvwt)
 {
-	float3 a = { vec[ind[prim_id * 3] * 3],
-		vec[ind[prim_id * 3] * 3 + 1],
-		vec[ind[prim_id * 3] * 3 + 2], };
-
-	float3 b = { vec[ind[prim_id * 3 + 1] * 3],
-		vec[ind[prim_id * 3 + 1] * 3 + 1],
-		vec[ind[prim_id * 3 + 1] * 3 + 2], };
-
-	float3 c = { vec[ind[prim_id * 3 + 2] * 3],
-		vec[ind[prim_id * 3 + 2] * 3 + 1],
-		vec[ind[prim_id * 3 + 2] * 3 + 2], };
+	RadeonRays::float3 a = { vec[ind[prim_id * 3] * 3], vec[ind[prim_id * 3] * 3 + 1], vec[ind[prim_id * 3] * 3 + 2], };
+	RadeonRays::float3 b = { vec[ind[prim_id * 3 + 1] * 3], vec[ind[prim_id * 3 + 1] * 3 + 1], vec[ind[prim_id * 3 + 1] * 3 + 2], };
+	RadeonRays::float3 c = { vec[ind[prim_id * 3 + 2] * 3], vec[ind[prim_id * 3 + 2] * 3 + 1], vec[ind[prim_id * 3 + 2] * 3 + 2], };
 	return a * (1 - uvwt.x - uvwt.y) + b * uvwt.x + c * uvwt.y;
 }
 
@@ -90,23 +80,22 @@ void dumpTGA(const char* filepath, std::uint8_t pixesl[], std::uint32_t width, s
 
 int main()
 {
-	IntersectionApi::SetPlatform(DeviceInfo::kAny);
+	RadeonRays::IntersectionApi::SetPlatform(RadeonRays::DeviceInfo::kAny);
 
 	int deviceidx = -1;
-	for (auto idx = 0U; idx < IntersectionApi::GetDeviceCount(); ++idx)
+	for (auto idx = 0U; idx < RadeonRays::IntersectionApi::GetDeviceCount(); ++idx)
 	{
-		DeviceInfo devinfo;
-		IntersectionApi::GetDeviceInfo(idx, devinfo);
+		RadeonRays::DeviceInfo devinfo;
+		RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
 
-		if (devinfo.type == DeviceInfo::kCpu)
+		if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
 			deviceidx = idx;
 	}
 
 	if (deviceidx == -1) return 1;
 
-	IntersectionApi* api = IntersectionApi::Create(deviceidx);
-
-	Shape* shape = api->CreateMesh(g_vertices, 3, 3 * sizeof(float), g_indices, 0, g_numfaceverts, 1);
+	auto api = RadeonRays::IntersectionApi::Create(deviceidx);
+	auto shape = api->CreateMesh(g_vertices, 3, 3 * sizeof(float), g_indices, 0, g_numfaceverts, 1);
 
 	api->AttachShape(shape);
 	api->Commit();
@@ -114,7 +103,7 @@ int main()
 	const int k_raypack_size = g_window_height * g_window_width;
 
 	// Prepare rays. One for each texture pixel.
-	std::vector<ray> rays(k_raypack_size);
+	std::vector<RadeonRays::ray> rays(k_raypack_size);
 
 	for (int i = 0; i < g_window_height; ++i)
 	{
@@ -125,27 +114,27 @@ int main()
 			float x = -1.f + xstep * (float)j;
 			float y = -1.f + ystep * (float)i;
 			float z = 1.f;
-			rays[i * g_window_width + j].o = float3(x, y, z, 1000.f);
-			rays[i * g_window_width + j].d = float3{ 0.f, 0.f, -1.f };
+			rays[i * g_window_width + j].o = RadeonRays::float3(x, y, z, 1000.f);
+			rays[i * g_window_width + j].d = RadeonRays::float3{ 0.f, 0.f, -1.f };
 		}
 	}
 
-	Buffer* ray_buffer = api->CreateBuffer(sizeof(ray) * k_raypack_size, rays.data());
-	Buffer* isect_buffer = api->CreateBuffer(sizeof(Intersection) * k_raypack_size, nullptr);
+	RadeonRays::Buffer* ray_buffer = api->CreateBuffer(sizeof(RadeonRays::ray) * k_raypack_size, rays.data());
+	RadeonRays::Buffer* isect_buffer = api->CreateBuffer(sizeof(RadeonRays::Intersection) * k_raypack_size, nullptr);
 
 	api->QueryIntersection(ray_buffer, k_raypack_size, isect_buffer, nullptr, nullptr);
 
 	// Get results
-	Event* e = nullptr;
-	Intersection* isect = nullptr;
-	api->MapBuffer(isect_buffer, kMapRead, 0, k_raypack_size * sizeof(Intersection), (void**)&isect, &e);
+	RadeonRays::Event* e = nullptr;
+	RadeonRays::Intersection* isect = nullptr;
+	api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, k_raypack_size * sizeof(RadeonRays::Intersection), (void**)&isect, &e);
 
 	e->Wait();
 	api->DeleteEvent(e);
 	e = nullptr;
 
 	// Point light position
-	float3 light = { 0.f, 0.f, 0.25f };
+	RadeonRays::float3 light = { 0.f, 0.f, 0.25f };
 
 	// Render triangle and lightning
 	std::vector<std::uint8_t> tex_data(k_raypack_size * 4);
@@ -154,16 +143,16 @@ int main()
 		int shape_id = isect[i].shapeid;
 		int prim_id = isect[i].primid;
 
-		if (shape_id != kNullId)
+		if (shape_id != RadeonRays::kNullId)
 		{
 			// Calculate position and normal of the intersection point
-			float3 pos = ConvertFromBarycentric(g_vertices, g_indices, prim_id, isect[i].uvwt);
-			float3 norm = ConvertFromBarycentric(g_normals, g_indices, prim_id, isect[i].uvwt);
+			RadeonRays::float3 pos = ConvertFromBarycentric(g_vertices, g_indices, prim_id, isect[i].uvwt);
+			RadeonRays::float3 norm = ConvertFromBarycentric(g_normals, g_indices, prim_id, isect[i].uvwt);
 			norm.normalize();
 
 			// Calculate lighting
-			float3 col = { 0.f, 0.f, 0.f };
-			float3 light_dir = light - pos;
+			RadeonRays::float3 col = { 0.f, 0.f, 0.f };
+			RadeonRays::float3 light_dir = light - pos;
 			light_dir.normalize();
 			float dot_prod = dot(norm, light_dir);
 			if (dot_prod > 0)
@@ -172,14 +161,6 @@ int main()
 			tex_data[i * 4] = col[0] * 255;
 			tex_data[i * 4 + 1] = col[1] * 255;
 			tex_data[i * 4 + 2] = col[2] * 255;
-			tex_data[i * 4 + 3] = 255;
-		}
-		else
-		{
-			// Draw white pixels for misses
-			tex_data[i * 4] = 255;
-			tex_data[i * 4 + 1] = 255;
-			tex_data[i * 4 + 2] = 255;
 			tex_data[i * 4 + 3] = 255;
 		}
 	}
