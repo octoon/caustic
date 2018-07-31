@@ -16,10 +16,13 @@ struct Scene
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
+	RadeonRays::float3 sky = { 0.8f, 0.9f, 1.0f };
 
 	RadeonRays::IntersectionApi* api;
 	RadeonRays::Buffer* ray_buffer;
 	RadeonRays::Buffer* isect_buffer;
+
+	std::vector<RadeonRays::ray> rays;
 };
 
 bool init_data(Scene& scene)
@@ -94,9 +97,11 @@ bool init_RadeonRays_Camera(Scene& scene)
 
 			rays[i * scene.g_window_width + j].o = camera_pos;
 			rays[i * scene.g_window_width + j].d = RadeonRays::float3(x - camera_pos.x, y - camera_pos.y, z - camera_pos.z);
+			rays[i * scene.g_window_width + j].d.normalize();
 		}
 	}
 
+	scene.rays = rays;
 	scene.ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray) * k_raypack_size, rays.data());
 	scene.isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection) * k_raypack_size, nullptr);
 
@@ -158,6 +163,13 @@ void dumpTGA(const char* filepath, std::uint8_t pixesl[], std::uint32_t width, s
 		throw std::runtime_error("failed to open the file: " + std::string(filepath));
 }
 
+inline RadeonRays::float3 reflect(const RadeonRays::float3& I, const RadeonRays::float3& N) noexcept
+{
+	return I - 2 * (RadeonRays::dot(I, N) * N);
+}
+
+#include <iostream>
+
 int main()
 {
 	Scene scene;
@@ -166,7 +178,7 @@ int main()
 	if (!init_RadeonRays_Scene(scene)) return false;
 	if (!init_RadeonRays_Camera(scene)) return false;
 
-	const int k_raypack_size = scene.g_window_height * scene.g_window_width;
+	const std::uint32_t k_raypack_size = scene.g_window_height * scene.g_window_width;
 	scene.api->QueryIntersection(scene.ray_buffer, k_raypack_size, scene.isect_buffer, nullptr, nullptr);
 
 	// Get results
@@ -178,38 +190,73 @@ int main()
 	scene.api->DeleteEvent(e);
 	e = nullptr;
 	
-	// Render triangle and lightning
 	std::vector<std::uint32_t> tex_data(k_raypack_size);
+	
+	auto isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
 
-	for (int i = 0; i < k_raypack_size; ++i)
+	for (std::uint32_t i = 0; i < k_raypack_size; ++i)
 	{
 		int shape_id = isect[i].shapeid;
 		int prim_id = isect[i].primid;
 
-		if (shape_id != RadeonRays::kNullId && prim_id != RadeonRays::kNullId)
+		if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+			continue;
+
+		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
+		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
+
+		RadeonRays::float3 colorAccum(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+		RadeonRays::float3 pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+		RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+		RadeonRays::float3 rd = scene.rays[i].d;
+		norm.normalize();
+
+		for (std::uint32_t bounce = 0; bounce < 1; bounce++)
 		{
-			tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
-			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
-		
-			RadeonRays::float3 diff = { mat.diffuse[0], mat.diffuse[1], mat.diffuse[2] };
-			RadeonRays::float3 pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-			RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-			norm.normalize();
+			RadeonRays::ray ray;
+			ray.o = pos;
+			ray.d = reflect(rd, norm);
+			auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), &ray);
 
-			// Calculate lighting
-			RadeonRays::float3 light_dir = scene.light - pos;
-			light_dir.normalize();
+			scene.api->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr);
 
-			RadeonRays::float3 col = diff *std::max(0.0f, RadeonRays::dot(norm, light_dir));
+			RadeonRays::Intersection* isect = nullptr;
+			scene.api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&isect, &e);
 
-			std::uint32_t color = 0xFF << 24;
-			color |= (std::uint8_t)(255 * col[0]) << 16;
-			color |= (std::uint8_t)(255 * col[1]) << 8;
-			color |= (std::uint8_t)(255 * col[2]);
+			e->Wait();
 
-			tex_data[i] = color;
+			scene.api->DeleteEvent(e);
+			scene.api->DeleteBuffer(ray_buffer);
+
+			if (isect->shapeid != RadeonRays::kNullId && isect->primid != RadeonRays::kNullId)
+			{
+				tinyobj::mesh_t& mesh = scene.g_objshapes[isect->shapeid].mesh;
+				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[isect->primid]];
+
+				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+
+				pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), isect->primid, isect->uvwt);
+				norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), isect->primid, isect->uvwt);
+
+				colorAccum *= diff;
+			}
+			else
+			{
+				colorAccum *= scene.sky;
+			}
+
+			scene.api->UnmapBuffer(isect_buffer, isect, nullptr);
 		}
+
+		std::uint32_t color = 0xFF << 24;
+		color |= (std::uint8_t)(255 * colorAccum[0]) << 16;
+		color |= (std::uint8_t)(255 * colorAccum[1]) << 8;
+		color |= (std::uint8_t)(255 * colorAccum[2]);
+
+		tex_data[i] = color;
 	}
+
+	RadeonRays::IntersectionApi::Delete(scene.api);
 
 	dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)tex_data.data(), scene.g_window_width, scene.g_window_height, 4);
 
