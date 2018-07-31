@@ -1,26 +1,106 @@
 #include <radeon_rays.h>
 #include <assert.h>
 #include <fstream>
+#include "tiny_obj_loader.h"
 
-namespace 
+struct Scene
 {
-	float const g_vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-	};
-	float const g_normals[] = {
-		0.f,0.f,1.f,
-		0.f,0.f,1.f,
-		0.f,0.f,1.f,
-	};
-	int const g_indices[] = { 0, 1, 2 };
-	const int g_numfaceverts[] = { 3 };
-	const RadeonRays::float3 g_color = { 1.f, 0.f, 0.f, 1.f };
-	unsigned int g_vertex_buffer, g_index_buffer;
-	unsigned int g_texture;
+	std::vector<tinyobj::shape_t> g_objshapes;
+	std::vector<tinyobj::material_t> g_objmaterials;
+
+	unsigned g_vertex_buffer, g_index_buffer;
+	unsigned g_texture;
+	
 	int g_window_width = 640;
 	int g_window_height = 480;
+
+	// Point light position
+	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
+
+	RadeonRays::IntersectionApi* api;
+	RadeonRays::Buffer* ray_buffer;
+	RadeonRays::Buffer* isect_buffer;
+};
+
+bool init_data(Scene& scene)
+{
+	std::string basepath = "../Resources/CornellBox/";
+	std::string filename = basepath + "orig.objm";
+	std::string res = LoadObj(scene.g_objshapes, scene.g_objmaterials, filename.c_str(), basepath.c_str());
+	return res != "" ? false : true;
+}
+
+bool init_RadeonRays(Scene& scene)
+{
+	RadeonRays::IntersectionApi::SetPlatform(RadeonRays::DeviceInfo::kAny);
+
+	int deviceidx = -1;
+	for (auto idx = 0U; idx < RadeonRays::IntersectionApi::GetDeviceCount(); ++idx)
+	{
+		RadeonRays::DeviceInfo devinfo;
+		RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
+
+		if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
+			deviceidx = idx;
+	}
+
+	if (deviceidx == -1) return false;
+
+	scene.api = RadeonRays::IntersectionApi::Create(deviceidx);
+	return true;
+}
+
+bool init_RadeonRays_Scene(Scene& scene)
+{
+	for (int id = 0; id < scene.g_objshapes.size(); ++id)
+	{
+		tinyobj::shape_t& objshape = scene.g_objshapes[id];
+
+		float* vertdata = objshape.mesh.positions.data();
+		int nvert = objshape.mesh.positions.size();
+		int* indices = objshape.mesh.indices.data();
+		int nfaces = objshape.mesh.indices.size() / 3;
+
+		RadeonRays::Shape* shape = scene.api->CreateMesh(vertdata, nvert, 3 * sizeof(float), indices, 0, nullptr, nfaces);
+
+		assert(shape != nullptr);
+		scene.api->AttachShape(shape);
+
+		shape->SetId(id);
+	}
+
+	scene.api->Commit();
+
+	return true;
+}
+
+bool init_RadeonRays_Camera(Scene& scene)
+{
+	const int k_raypack_size = scene.g_window_height * scene.g_window_width;
+
+	// Prepare rays. One for each texture pixel.
+	std::vector<RadeonRays::ray> rays(k_raypack_size);
+	RadeonRays::float4 camera_pos = { 0.f, 1.f, 3.f, 1000.f };
+
+	for (int i = 0; i < scene.g_window_height; ++i)
+	{
+		for (int j = 0; j < scene.g_window_width; ++j)
+		{
+			const float xstep = 2.f / (float)scene.g_window_width;
+			const float ystep = 2.f / (float)scene.g_window_height;
+			float x = -1.f + xstep * (float)j;
+			float y = ystep * (float)i;
+			float z = 1.f;
+
+			rays[i * scene.g_window_width + j].o = camera_pos;
+			rays[i * scene.g_window_width + j].d = RadeonRays::float3(x - camera_pos.x, y - camera_pos.y, z - camera_pos.z);
+		}
+	}
+
+	scene.ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray) * k_raypack_size, rays.data());
+	scene.isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection) * k_raypack_size, nullptr);
+
+	return true;
 }
 
 RadeonRays::float3 ConvertFromBarycentric(const float* vec, const int* ind, int prim_id, const RadeonRays::float4& uvwt)
@@ -71,7 +151,7 @@ void dumpTGA(std::ostream& stream, std::uint8_t pixesl[], std::uint32_t width, s
 
 void dumpTGA(const char* filepath, std::uint8_t pixesl[], std::uint32_t width, std::uint32_t height, std::uint32_t channel) noexcept(false)
 {
-	auto stream = std::ofstream(filepath, std::ios_base::out);
+	auto stream = std::ofstream(filepath, std::ios_base::out | std::ios_base::binary);
 	if (stream)
 		dumpTGA(stream, pixesl, width, height, channel);
 	else
@@ -80,92 +160,58 @@ void dumpTGA(const char* filepath, std::uint8_t pixesl[], std::uint32_t width, s
 
 int main()
 {
-	RadeonRays::IntersectionApi::SetPlatform(RadeonRays::DeviceInfo::kAny);
+	Scene scene;
+	if (!init_data(scene)) return false;
+	if (!init_RadeonRays(scene)) return false;
+	if (!init_RadeonRays_Scene(scene)) return false;
+	if (!init_RadeonRays_Camera(scene)) return false;
 
-	int deviceidx = -1;
-	for (auto idx = 0U; idx < RadeonRays::IntersectionApi::GetDeviceCount(); ++idx)
-	{
-		RadeonRays::DeviceInfo devinfo;
-		RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
-
-		if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
-			deviceidx = idx;
-	}
-
-	if (deviceidx == -1) return 1;
-
-	auto api = RadeonRays::IntersectionApi::Create(deviceidx);
-	auto shape = api->CreateMesh(g_vertices, 3, 3 * sizeof(float), g_indices, 0, g_numfaceverts, 1);
-
-	api->AttachShape(shape);
-	api->Commit();
-
-	const int k_raypack_size = g_window_height * g_window_width;
-
-	// Prepare rays. One for each texture pixel.
-	std::vector<RadeonRays::ray> rays(k_raypack_size);
-
-	for (int i = 0; i < g_window_height; ++i)
-	{
-		for (int j = 0; j < g_window_width; ++j)
-		{
-			const float xstep = 2.f / (float)g_window_width;
-			const float ystep = 2.f / (float)g_window_height;
-			float x = -1.f + xstep * (float)j;
-			float y = -1.f + ystep * (float)i;
-			float z = 1.f;
-			rays[i * g_window_width + j].o = RadeonRays::float3(x, y, z, 1000.f);
-			rays[i * g_window_width + j].d = RadeonRays::float3{ 0.f, 0.f, -1.f };
-		}
-	}
-
-	RadeonRays::Buffer* ray_buffer = api->CreateBuffer(sizeof(RadeonRays::ray) * k_raypack_size, rays.data());
-	RadeonRays::Buffer* isect_buffer = api->CreateBuffer(sizeof(RadeonRays::Intersection) * k_raypack_size, nullptr);
-
-	api->QueryIntersection(ray_buffer, k_raypack_size, isect_buffer, nullptr, nullptr);
+	const int k_raypack_size = scene.g_window_height * scene.g_window_width;
+	scene.api->QueryIntersection(scene.ray_buffer, k_raypack_size, scene.isect_buffer, nullptr, nullptr);
 
 	// Get results
 	RadeonRays::Event* e = nullptr;
 	RadeonRays::Intersection* isect = nullptr;
-	api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, k_raypack_size * sizeof(RadeonRays::Intersection), (void**)&isect, &e);
+	scene.api->MapBuffer(scene.isect_buffer, RadeonRays::kMapRead, 0, k_raypack_size * sizeof(RadeonRays::Intersection), (void**)&isect, &e);
 
 	e->Wait();
-	api->DeleteEvent(e);
+	scene.api->DeleteEvent(e);
 	e = nullptr;
-
-	// Point light position
-	RadeonRays::float3 light = { 0.f, 0.f, 0.25f };
-
+	
 	// Render triangle and lightning
-	std::vector<std::uint8_t> tex_data(k_raypack_size * 4);
+	std::vector<std::uint32_t> tex_data(k_raypack_size);
+
 	for (int i = 0; i < k_raypack_size; ++i)
 	{
 		int shape_id = isect[i].shapeid;
 		int prim_id = isect[i].primid;
 
-		if (shape_id != RadeonRays::kNullId)
+		if (shape_id != RadeonRays::kNullId && prim_id != RadeonRays::kNullId)
 		{
-			// Calculate position and normal of the intersection point
-			RadeonRays::float3 pos = ConvertFromBarycentric(g_vertices, g_indices, prim_id, isect[i].uvwt);
-			RadeonRays::float3 norm = ConvertFromBarycentric(g_normals, g_indices, prim_id, isect[i].uvwt);
+			tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
+			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
+		
+			RadeonRays::float3 diff = { mat.diffuse[0], mat.diffuse[1], mat.diffuse[2] };
+			RadeonRays::float3 pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+			RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
 			norm.normalize();
 
 			// Calculate lighting
-			RadeonRays::float3 col = { 0.f, 0.f, 0.f };
-			RadeonRays::float3 light_dir = light - pos;
+			RadeonRays::float3 light_dir = scene.light - pos;
 			light_dir.normalize();
-			float dot_prod = dot(norm, light_dir);
-			if (dot_prod > 0)
-				col += dot_prod * g_color;
 
-			tex_data[i * 4] = col[0] * 255;
-			tex_data[i * 4 + 1] = col[1] * 255;
-			tex_data[i * 4 + 2] = col[2] * 255;
-			tex_data[i * 4 + 3] = 255;
+			RadeonRays::float3 col = diff *std::max(0.0f, RadeonRays::dot(norm, light_dir));
+
+			std::uint32_t color = 0xFF << 24;
+			color |= (std::uint8_t)(255 * col[0]) << 16;
+			color |= (std::uint8_t)(255 * col[1]) << 8;
+			color |= (std::uint8_t)(255 * col[2]);
+
+			tex_data[i] = color;
 		}
 	}
 
-	dumpTGA("C:/Users/Administrator/Desktop/test.tga", tex_data.data(), g_window_width, g_window_height, 4);
+	dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)tex_data.data(), scene.g_window_width, scene.g_window_height, 4);
 
     return 0;
 }
