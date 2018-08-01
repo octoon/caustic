@@ -14,6 +14,9 @@ struct Scene
 	int g_window_width = 640;
 	int g_window_height = 480;
 
+	std::uint32_t spp = 100;
+	std::uint32_t bounce = 1;
+
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
 	RadeonRays::float3 sky = { 12.0f, 12.0f, 12.0f };
@@ -22,7 +25,7 @@ struct Scene
 	RadeonRays::IntersectionApi* api;
 	RadeonRays::Buffer* ray_buffer;
 	RadeonRays::Buffer* isect_buffer;
-
+	
 	std::vector<RadeonRays::ray> rays;
 };
 
@@ -211,6 +214,69 @@ RadeonRays::float3 CosineDirection(float seed, const RadeonRays::float3& nor)
 	return d;
 }
 
+RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::size_t seed, std::uint32_t bounce)
+{
+	if (bounce > scene.bounce)
+		return RadeonRays::float3(0.0f, 0.0f, 0.0f);
+
+	RadeonRays::ray* rays = nullptr;
+	RadeonRays::Event* e = nullptr;
+	RadeonRays::Intersection* hits = nullptr;
+	RadeonRays::float3 colorAccum(0.0f, 0.0f, 0.0f);
+
+	auto spp_ray = scene.api->CreateBuffer(sizeof(RadeonRays::ray) * scene.spp, nullptr);
+	auto spp_hit = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection) * scene.spp, nullptr);
+
+	scene.api->MapBuffer(spp_ray, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * scene.spp, (void**)&rays, &e); e->Wait(); scene.api->DeleteEvent(e);
+
+	for (std::size_t i = 0; i < scene.spp; i++)
+	{
+		RadeonRays::float3 rd = CosineDirection(76.2 + hash(seed) + 17.6 * i, norm);
+		rd.normalize();
+
+		auto& ray = rays[i];
+		ray.o = ro + rd * 1e-4f;
+		ray.d = rd;
+		ray.SetMaxT(std::numeric_limits<float>::max());
+		ray.SetTime(0.0f);
+		ray.SetMask(-1);
+		ray.SetActive(true);
+		ray.SetDoBackfaceCulling(true);
+	}
+
+	scene.api->UnmapBuffer(spp_ray, rays, &e); e->Wait(); scene.api->DeleteEvent(e);
+	scene.api->QueryIntersection(spp_ray, scene.spp, spp_hit, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
+	scene.api->MapBuffer(spp_hit, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&hits, &e); e->Wait(); scene.api->DeleteEvent(e);
+	
+	for (std::size_t i = 0; i < scene.spp; i++)
+	{
+		auto& hit = hits[i];
+		if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
+		{
+			tinyobj::mesh_t& mesh = scene.g_objshapes[hit.shapeid].mesh;
+			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
+
+			RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+			auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+			auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+			auto atten = GetPhysicalLightAttenuation(p - ro);
+
+			colorAccum += diff * atten * PathTracing(scene, p, n, seed, ++bounce);
+		}
+		else
+		{
+			colorAccum += scene.sky;
+		}
+	}
+
+	scene.api->UnmapBuffer(spp_hit, hits, nullptr);
+
+	scene.api->DeleteBuffer(spp_ray);
+	scene.api->DeleteBuffer(spp_hit);
+
+	return colorAccum;
+}
+
 int main()
 {
 	Scene scene;
@@ -222,83 +288,29 @@ int main()
 	const std::uint32_t k_raypack_size = scene.g_window_height * scene.g_window_width;
 	scene.api->QueryIntersection(scene.ray_buffer, k_raypack_size, scene.isect_buffer, nullptr, nullptr);
 
-	// Get results
 	RadeonRays::Event* e = nullptr;
 	RadeonRays::Intersection* isect = nullptr;
-	scene.api->MapBuffer(scene.isect_buffer, RadeonRays::kMapRead, 0, k_raypack_size * sizeof(RadeonRays::Intersection), (void**)&isect, &e);
-
-	e->Wait();
-	scene.api->DeleteEvent(e);
-	e = nullptr;
+	scene.api->MapBuffer(scene.isect_buffer, RadeonRays::kMapRead, 0, k_raypack_size * sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
 	
 	std::vector<RadeonRays::float3> tex_data(k_raypack_size);
 	
-	auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
-	auto isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
-
-	for (std::size_t spp = 0; spp < 10; spp++)
+	for (std::uint32_t i = 0; i < k_raypack_size; ++i)
 	{
-		for (std::uint32_t i = 0; i < k_raypack_size; ++i)
-		{
-			int shape_id = isect[i].shapeid;
-			int prim_id = isect[i].primid;
+		int shape_id = isect[i].shapeid;
+		int prim_id = isect[i].primid;
 
-			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
-				continue;
+		if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+			continue;
 
-			tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
-			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
+		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
+		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
 
-			RadeonRays::float3 oneColor(0.0f, 0.0f, 0.0f);
-			RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-			RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-			RadeonRays::float3 rd = CosineDirection(76.2 + hash(i) + 17.6 * spp, norm);
-			RadeonRays::float3 colorAccum(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-			rd.normalize();
+		RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+		RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+		RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);			
 
-			for (std::uint32_t bounce = 0; bounce < 8 ; bounce++)
-			{
-				RadeonRays::ray* ray = nullptr;
-				RadeonRays::Intersection* isect = nullptr;
-
-				scene.api->MapBuffer(ray_buffer, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&ray, &e); e->Wait(); scene.api->DeleteEvent(e);
-				ray->o = ro + rd * 1e-4f;
-				ray->d = rd;
-				ray->SetMaxT(std::numeric_limits<float>::max());
-				ray->SetTime(0.0f);
-				ray->SetMask(-1);
-				ray->SetActive(true);
-				ray->SetDoBackfaceCulling(true);
-
-				scene.api->UnmapBuffer(ray_buffer, ray, &e); e->Wait(); scene.api->DeleteEvent(e);
-				scene.api->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
-				scene.api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
-
-				RadeonRays::Intersection hit = *isect;
-
-				scene.api->UnmapBuffer(isect_buffer, isect, nullptr);
-
-				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
-				{
-					oneColor = colorAccum * scene.sky;
-					break;
-				}
-
-				tinyobj::mesh_t& mesh = scene.g_objshapes[hit.shapeid].mesh;
-				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
-
-				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-				auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-				auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-				auto atten = GetPhysicalLightAttenuation(p - ro);
-
-				ro = p;
-				rd = CosineDirection(76.2 + hash(i) + 17.6 * spp + bounce, n);
-				colorAccum *= diff * atten;
-			}
-
-			tex_data[i] += oneColor * (1.0f / 10);
-		}
+		std::uint32_t bounce = 0;
+		tex_data[i] += diffuse * PathTracing(scene, ro, norm, i, bounce);
 	}
 
 	RadeonRays::IntersectionApi::Delete(scene.api);
@@ -307,9 +319,9 @@ int main()
 
 	for (std::size_t i = 0; i < tex_data.size(); i++)
 	{
-		std::uint8_t r = TonemapACES(tex_data[i].x / (2.0f * PI)) * 255;
-		std::uint8_t g = TonemapACES(tex_data[i].y / (2.0f * PI)) * 255;
-		std::uint8_t b = TonemapACES(tex_data[i].z / (2.0f * PI)) * 255;
+		std::uint8_t r = TonemapACES(tex_data[i].x / (2.0f * PI) / scene.spp) * 255;
+		std::uint8_t g = TonemapACES(tex_data[i].y / (2.0f * PI) / scene.spp) * 255;
+		std::uint8_t b = TonemapACES(tex_data[i].z / (2.0f * PI) / scene.spp) * 255;
 
 		output[i] = 0xFF << 24 | r << 16 | g << 8 | b;
 	}
