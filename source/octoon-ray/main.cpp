@@ -251,25 +251,26 @@ int main()
 			scene.api->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
 			scene.api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
 
-			if (isect->shapeid != RadeonRays::kNullId && isect->primid != RadeonRays::kNullId)
-			{
-				tinyobj::mesh_t& mesh = scene.g_objshapes[isect->shapeid].mesh;
-				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[isect->primid]];
-
-				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-
-				auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), isect->primid, isect->uvwt);
-				auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), isect->primid, isect->uvwt);
-				auto atten = GetPhysicalLightAttenuation(p - pos);
-
-				colorAccum *= diff * atten;
-			}
-			else
-			{
-				colorAccum *= scene.sky;
-			}
+			RadeonRays::Intersection hit = *isect;
 
 			scene.api->UnmapBuffer(isect_buffer, isect, nullptr);
+
+			if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
+			{
+				colorAccum *= scene.sky;
+				break;
+			}
+			
+			tinyobj::mesh_t& mesh = scene.g_objshapes[hit.shapeid].mesh;
+			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
+
+			RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+
+			auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+			auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+			auto atten = GetPhysicalLightAttenuation(p - pos);
+
+			colorAccum *= 0.0f;// diff * atten;
 		}
 
 		std::uint32_t color = 0xFF << 24;
