@@ -247,8 +247,6 @@ int main()
 		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
 		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
 
-		RadeonRays::float3 finalColor(0.0f, 0.0f, 0.0f);
-
 		for (std::size_t spp = 0; spp < 10; spp++)
 		{
 			RadeonRays::float3 oneColor(0.0f, 0.0f, 0.0f);
@@ -301,10 +299,8 @@ int main()
 				colorAccum *= diff * atten;
 			}
 
-			finalColor += oneColor;
+			tex_data[i] += oneColor;
 		}
-
-		tex_data[i] = finalColor;
 	}
 
 	RadeonRays::IntersectionApi::Delete(scene.api);
