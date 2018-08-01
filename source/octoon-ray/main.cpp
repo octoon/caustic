@@ -16,7 +16,8 @@ struct Scene
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
-	RadeonRays::float3 sky = { 0.8f, 0.9f, 1.0f };
+	RadeonRays::float3 sky = { 1.0f, 1.0f, 1.0f };
+	RadeonRays::float3 camera = { 0.f, 1.f, 3.f, 1000.f };
 
 	RadeonRays::IntersectionApi* api;
 	RadeonRays::Buffer* ray_buffer;
@@ -83,7 +84,6 @@ bool init_RadeonRays_Camera(Scene& scene)
 
 	// Prepare rays. One for each texture pixel.
 	std::vector<RadeonRays::ray> rays(k_raypack_size);
-	RadeonRays::float4 camera_pos = { 0.f, 1.f, 3.f, 1000.f };
 
 	for (int i = 0; i < scene.g_window_height; ++i)
 	{
@@ -95,8 +95,8 @@ bool init_RadeonRays_Camera(Scene& scene)
 			float y = ystep * (float)i;
 			float z = 1.f;
 
-			rays[i * scene.g_window_width + j].o = camera_pos;
-			rays[i * scene.g_window_width + j].d = RadeonRays::float3(x - camera_pos.x, y - camera_pos.y, z - camera_pos.z);
+			rays[i * scene.g_window_width + j].o = scene.camera;
+			rays[i * scene.g_window_width + j].d = RadeonRays::float3(x - scene.camera.x, y - scene.camera.y, z - scene.camera.z);
 			rays[i * scene.g_window_width + j].d.normalize();
 		}
 	}
@@ -168,6 +168,27 @@ inline RadeonRays::float3 reflect(const RadeonRays::float3& I, const RadeonRays:
 	return I - 2 * (RadeonRays::dot(I, N) * N);
 }
 
+inline float TonemapACES(float x)
+{
+	const float A = 2.51f;
+	const float B = 0.03f;
+	const float C = 2.43f;
+	const float D = 0.59f;
+	const float E = 0.14f;
+	return std::min(1.0f, (x * (A * x + B)) / (x * (C * x + D) + E));
+}
+
+float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
+{
+	const float invRadius = 1 / radius;
+	float d = std::sqrt(RadeonRays::dot(L, L));
+	float fadeoutFactor = std::min(1.0f, std::max(0.0f, (radius - d) * (invRadius / 0.2f)));
+	d = std::max(d - attenuationBulbSize, 0.0f);
+	float denom = 1 + d / attenuationBulbSize;
+	float attenuation = fadeoutFactor * fadeoutFactor / (denom * denom);
+	return attenuation;
+}
+
 #include <iostream>
 
 int main()
@@ -192,6 +213,7 @@ int main()
 	
 	std::vector<std::uint32_t> tex_data(k_raypack_size);
 	
+	auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
 	auto isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
 
 	for (std::uint32_t i = 0; i < k_raypack_size; ++i)
@@ -213,20 +235,21 @@ int main()
 
 		for (std::uint32_t bounce = 0; bounce < 1; bounce++)
 		{
-			RadeonRays::ray ray;
-			ray.o = pos;
-			ray.d = reflect(rd, norm);
-			auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), &ray);
-
-			scene.api->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr);
-
+			RadeonRays::ray* ray = nullptr;
 			RadeonRays::Intersection* isect = nullptr;
-			scene.api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&isect, &e);
 
-			e->Wait();
+			scene.api->MapBuffer(ray_buffer, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&ray, &e); e->Wait(); scene.api->DeleteEvent(e);
+			ray->d = reflect(rd, norm);
+			ray->o = pos + ray->d * 1e-5f;
+			ray->SetMaxT(std::numeric_limits<float>::max());
+			ray->SetTime(0.0f);
+			ray->SetMask(-1);
+			ray->SetActive(true);
+			ray->SetDoBackfaceCulling(true);
 
-			scene.api->DeleteEvent(e);
-			scene.api->DeleteBuffer(ray_buffer);
+			scene.api->UnmapBuffer(ray_buffer, ray, &e);  e->Wait(); scene.api->DeleteEvent(e);
+			scene.api->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
+			scene.api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
 
 			if (isect->shapeid != RadeonRays::kNullId && isect->primid != RadeonRays::kNullId)
 			{
@@ -235,10 +258,11 @@ int main()
 
 				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 
-				pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), isect->primid, isect->uvwt);
-				norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), isect->primid, isect->uvwt);
+				auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), isect->primid, isect->uvwt);
+				auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), isect->primid, isect->uvwt);
+				auto atten = GetPhysicalLightAttenuation(p - pos);
 
-				colorAccum *= diff;
+				colorAccum *= diff * atten;
 			}
 			else
 			{
@@ -249,9 +273,9 @@ int main()
 		}
 
 		std::uint32_t color = 0xFF << 24;
-		color |= (std::uint8_t)(255 * colorAccum[0]) << 16;
-		color |= (std::uint8_t)(255 * colorAccum[1]) << 8;
-		color |= (std::uint8_t)(255 * colorAccum[2]);
+		color |= std::uint8_t(255 * TonemapACES(colorAccum[0])) << 16;
+		color |= std::uint8_t(255 * TonemapACES(colorAccum[1])) << 8;
+		color |= std::uint8_t(255 * TonemapACES(colorAccum[2]));
 
 		tex_data[i] = color;
 	}
