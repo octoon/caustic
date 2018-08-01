@@ -236,19 +236,19 @@ int main()
 	auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
 	auto isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
 
-	for (std::uint32_t i = 0; i < k_raypack_size; ++i)
+	for (std::size_t spp = 0; spp < 10; spp++)
 	{
-		int shape_id = isect[i].shapeid;
-		int prim_id = isect[i].primid;
-
-		if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
-			continue;
-
-		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
-		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
-
-		for (std::size_t spp = 0; spp < 10; spp++)
+		for (std::uint32_t i = 0; i < k_raypack_size; ++i)
 		{
+			int shape_id = isect[i].shapeid;
+			int prim_id = isect[i].primid;
+
+			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+				continue;
+
+			tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
+			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
+
 			RadeonRays::float3 oneColor(0.0f, 0.0f, 0.0f);
 			RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
 			RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
@@ -256,7 +256,7 @@ int main()
 			RadeonRays::float3 colorAccum(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 			rd.normalize();
 
-			for (std::uint32_t bounce = 0; bounce < 3; bounce++)
+			for (std::uint32_t bounce = 0; bounce < 8 ; bounce++)
 			{
 				RadeonRays::ray* ray = nullptr;
 				RadeonRays::Intersection* isect = nullptr;
