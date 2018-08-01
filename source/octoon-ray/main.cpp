@@ -195,7 +195,7 @@ float hash(float seed)
 	return noise - std::floor(noise);
 }
 
-RadeonRays::float3 cosineDirection(float seed, const RadeonRays::float3& nor)
+RadeonRays::float3 CosineDirection(float seed, const RadeonRays::float3& nor)
 {
 	float u = hash(78.233 + seed);
 	float v = hash(10.873 + seed);
@@ -231,7 +231,7 @@ int main()
 	scene.api->DeleteEvent(e);
 	e = nullptr;
 	
-	std::vector<std::uint32_t> tex_data(k_raypack_size);
+	std::vector<RadeonRays::float3> tex_data(k_raypack_size);
 	
 	auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
 	auto isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
@@ -247,67 +247,80 @@ int main()
 		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
 		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
 
-		RadeonRays::float3 colorAccum(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 		RadeonRays::float3 finalColor(0.0f, 0.0f, 0.0f);
-		RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-		RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-		RadeonRays::float3 rd = cosineDirection(hash(i), reflect(scene.rays[i].d, norm));
-		rd.normalize();
 
-		for (std::uint32_t bounce = 0; bounce < 1; bounce++)
+		for (std::size_t spp = 0; spp < 10; spp++)
 		{
-			RadeonRays::ray* ray = nullptr;
-			RadeonRays::Intersection* isect = nullptr;
+			RadeonRays::float3 oneColor(0.0f, 0.0f, 0.0f);
+			RadeonRays::float3 colorAccum(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+			RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+			RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+			RadeonRays::float3 rd = CosineDirection(76.2 + hash(i) + 17.6 * spp, norm);
+			rd.normalize();
 
-			scene.api->MapBuffer(ray_buffer, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&ray, &e); e->Wait(); scene.api->DeleteEvent(e);
-			ray->o = ro + rd * 1e-4f;
-			ray->d = rd;
-			ray->SetMaxT(std::numeric_limits<float>::max());
-			ray->SetTime(0.0f);
-			ray->SetMask(-1);
-			ray->SetActive(true);
-			ray->SetDoBackfaceCulling(true);
-
-			scene.api->UnmapBuffer(ray_buffer, ray, &e); e->Wait(); scene.api->DeleteEvent(e);
-			scene.api->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
-			scene.api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
-
-			RadeonRays::Intersection hit = *isect;
-
-			scene.api->UnmapBuffer(isect_buffer, isect, nullptr);
-
-			if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
+			for (std::uint32_t bounce = 0; bounce < 1; bounce++)
 			{
-				colorAccum *= scene.sky;
-				finalColor = colorAccum;
-				break;
+				RadeonRays::ray* ray = nullptr;
+				RadeonRays::Intersection* isect = nullptr;
+
+				scene.api->MapBuffer(ray_buffer, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&ray, &e); e->Wait(); scene.api->DeleteEvent(e);
+				ray->o = ro + rd * 1e-4f;
+				ray->d = rd;
+				ray->SetMaxT(std::numeric_limits<float>::max());
+				ray->SetTime(0.0f);
+				ray->SetMask(-1);
+				ray->SetActive(true);
+				ray->SetDoBackfaceCulling(true);
+
+				scene.api->UnmapBuffer(ray_buffer, ray, &e); e->Wait(); scene.api->DeleteEvent(e);
+				scene.api->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
+				scene.api->MapBuffer(isect_buffer, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
+
+				RadeonRays::Intersection hit = *isect;
+
+				scene.api->UnmapBuffer(isect_buffer, isect, nullptr);
+
+				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
+				{
+					colorAccum *= scene.sky;
+					oneColor = colorAccum;
+					break;
+				}
+
+				tinyobj::mesh_t& mesh = scene.g_objshapes[hit.shapeid].mesh;
+				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
+
+				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+
+				auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+				auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+				auto atten = GetPhysicalLightAttenuation(p - ro);
+
+				ro = p;
+				rd = CosineDirection(76.2 + hash(i) + 73.1 * bounce + 17.6 * spp, n);
+				colorAccum *= diff * atten;
 			}
-			
-			tinyobj::mesh_t& mesh = scene.g_objshapes[hit.shapeid].mesh;
-			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
 
-			RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-
-			auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-			auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-			auto atten = GetPhysicalLightAttenuation(p - ro);
-
-			ro = p;
-			rd = cosineDirection(bounce, n);
-			colorAccum *= diff * atten;
+			finalColor += oneColor;
 		}
 
-		std::uint32_t color = 0xFF << 24;
-		color |= std::uint8_t(255 * TonemapACES(finalColor[0])) << 16;
-		color |= std::uint8_t(255 * TonemapACES(finalColor[1])) << 8;
-		color |= std::uint8_t(255 * TonemapACES(finalColor[2]));
-
-		tex_data[i] = color;
+		tex_data[i] = finalColor;
 	}
 
 	RadeonRays::IntersectionApi::Delete(scene.api);
 
-	dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)tex_data.data(), scene.g_window_width, scene.g_window_height, 4);
+	std::vector<std::uint32_t> output(tex_data.size());
+
+	for (std::size_t i = 0; i < tex_data.size(); i++)
+	{
+		std::uint8_t r = TonemapACES(tex_data[i].x) * 255;
+		std::uint8_t g = TonemapACES(tex_data[i].y) * 255;
+		std::uint8_t b = TonemapACES(tex_data[i].z) * 255;
+
+		output[i] = 0xFF << 24 | r << 16 | g << 8 | b;
+	}
+
+	dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)output.data(), scene.g_window_width, scene.g_window_height, 4);
 
     return 0;
 }
