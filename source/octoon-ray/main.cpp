@@ -15,7 +15,7 @@ struct Scene
 	int g_window_height = 480;
 
 	std::uint32_t spp = 100;
-	std::uint32_t bounce = 1;
+	std::uint32_t bounce = 2;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
