@@ -270,6 +270,8 @@ int main()
 			auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 			auto atten = GetPhysicalLightAttenuation(p - pos);
 
+			pos = p;
+			norm = n;
 			colorAccum *= 0.0f;// diff * atten;
 		}
 
