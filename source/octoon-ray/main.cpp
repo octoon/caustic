@@ -221,6 +221,7 @@ int main()
 	if (!init_RadeonRays_Camera(scene)) return false;
 
 	const std::uint32_t k_raypack_size = scene.g_window_height * scene.g_window_width;
+	const std::uint32_t spp_num = 10;
 	scene.api->QueryIntersection(scene.ray_buffer, k_raypack_size, scene.isect_buffer, nullptr, nullptr);
 
 	// Get results
@@ -237,7 +238,7 @@ int main()
 	auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
 	auto isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
 
-	for (std::size_t spp = 0; spp < 10; spp++)
+	for (std::size_t spp = 0; spp < spp_num; spp++)
 	{
 		for (std::uint32_t i = 0; i < k_raypack_size; ++i)
 		{
@@ -300,8 +301,8 @@ int main()
 
 			tex_data[i] += oneColor * (1.0f / 10);
 
-			if (i % 1000 == 0)
-				std::cout << (float)i / k_raypack_size << std::endl;
+			if (i % 10000 == 0)
+				std::cout << (float)(spp * k_raypack_size + i) / (k_raypack_size * spp_num) << std::endl;
 		}
 	}
 
