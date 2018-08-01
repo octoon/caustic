@@ -231,7 +231,7 @@ int main()
 	scene.api->DeleteEvent(e);
 	e = nullptr;
 	
-	std::vector<RadeonRays::float3> tex_data(k_raypack_size);
+	std::vector<std::uint32_t> tex_data(k_raypack_size);
 	
 	auto ray_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
 	auto isect_buffer = scene.api->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
@@ -247,14 +247,14 @@ int main()
 		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
 		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
 
+		RadeonRays::float3 colorAccum(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 		RadeonRays::float3 finalColor(0.0f, 0.0f, 0.0f);
+		RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+		RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
 
 		for (std::size_t spp = 0; spp < 10; spp++)
 		{
 			RadeonRays::float3 oneColor(0.0f, 0.0f, 0.0f);
-			RadeonRays::float3 colorAccum(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-			RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-			RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
 			RadeonRays::float3 rd = CosineDirection(76.2 + hash(i) + 17.6 * spp, norm);
 			rd.normalize();
 
@@ -297,30 +297,24 @@ int main()
 				auto atten = GetPhysicalLightAttenuation(p - ro);
 
 				ro = p;
-				rd = CosineDirection(76.2 + hash(i) + 73.1 * bounce + 17.6 * spp, n);
+				rd = CosineDirection(bounce, n);
 				colorAccum *= diff * atten;
 			}
 
 			finalColor += oneColor;
 		}
 
-		tex_data[i] = finalColor;
+		std::uint32_t color = 0xFF << 24;
+		color |= std::uint8_t(255 * TonemapACES(finalColor[0])) << 16;
+		color |= std::uint8_t(255 * TonemapACES(finalColor[1])) << 8;
+		color |= std::uint8_t(255 * TonemapACES(finalColor[2]));
+
+		tex_data[i] = color;
 	}
 
 	RadeonRays::IntersectionApi::Delete(scene.api);
 
-	std::vector<std::uint32_t> output(tex_data.size());
-
-	for (std::size_t i = 0; i < tex_data.size(); i++)
-	{
-		std::uint8_t r = TonemapACES(tex_data[i].x) * 255;
-		std::uint8_t g = TonemapACES(tex_data[i].y) * 255;
-		std::uint8_t b = TonemapACES(tex_data[i].z) * 255;
-
-		output[i] = 0xFF << 24 | r << 16 | g << 8 | b;
-	}
-
-	dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)output.data(), scene.g_window_width, scene.g_window_height, 4);
+	dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)tex_data.data(), scene.g_window_width, scene.g_window_height, 4);
 
     return 0;
 }
