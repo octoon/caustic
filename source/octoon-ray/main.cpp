@@ -289,7 +289,7 @@ RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, float seed)
 
 RadeonRays::float3 bsdf(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
 {
-	return CosineDirection(n, 76.2 + std::sin(seed) + 17.6 * i);
+	return CosineDirection(n, seed + float(i) / samplesCount);
 }
 
 RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::size_t seed, std::uint32_t bounce)
