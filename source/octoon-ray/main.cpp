@@ -246,7 +246,7 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 
 	scene.api->UnmapBuffer(spp_ray, rays, &e); e->Wait(); scene.api->DeleteEvent(e);
 	scene.api->QueryIntersection(spp_ray, scene.spp, spp_hit, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
-	scene.api->MapBuffer(spp_hit, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&hits, &e); e->Wait(); scene.api->DeleteEvent(e);
+	scene.api->MapBuffer(spp_hit, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * scene.spp, (void**)&hits, &e); e->Wait(); scene.api->DeleteEvent(e);
 	
 	for (std::size_t i = 0; i < scene.spp; i++)
 	{
