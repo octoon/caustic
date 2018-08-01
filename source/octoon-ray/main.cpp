@@ -10,12 +10,12 @@ struct Scene
 
 	unsigned g_vertex_buffer, g_index_buffer;
 	unsigned g_texture;
-	
+
 	int g_window_width = 640;
 	int g_window_height = 480;
 
-	std::uint32_t spp = 100;
-	std::uint32_t bounce = 2;
+	std::uint32_t spp = 10;
+	std::uint32_t bounce = 0;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
@@ -25,7 +25,7 @@ struct Scene
 	RadeonRays::IntersectionApi* api;
 	RadeonRays::Buffer* ray_buffer;
 	RadeonRays::Buffer* isect_buffer;
-	
+
 	std::vector<RadeonRays::ray> rays;
 };
 
@@ -47,8 +47,17 @@ bool init_RadeonRays(Scene& scene)
 		RadeonRays::DeviceInfo devinfo;
 		RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
 
-		if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
+		if (devinfo.type == RadeonRays::DeviceInfo::kGpu)
+		{
 			deviceidx = idx;
+			break;
+		}
+
+		if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
+		{
+			deviceidx = idx;
+			break;
+		}
 	}
 
 	if (deviceidx == -1) return false;
@@ -88,6 +97,7 @@ bool init_RadeonRays_Camera(Scene& scene)
 	// Prepare rays. One for each texture pixel.
 	std::vector<RadeonRays::ray> rays(k_raypack_size);
 
+#pragma omp parallel for
 	for (int i = 0; i < scene.g_window_height; ++i)
 	{
 		for (int j = 0; j < scene.g_window_width; ++j)
@@ -192,26 +202,94 @@ float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = st
 	return attenuation;
 }
 
-float hash(float seed)
+std::uint32_t ReverseBits32(std::uint32_t bits)
 {
-	float noise = std::sin(seed) * 43758.5453;
-	return noise - std::floor(noise);
+	bits = (bits << 16) | (bits >> 16);
+	bits = ((bits & 0x00ff00ff) << 8) | ((bits & 0xff00ff00) >> 8);
+	bits = ((bits & 0x0f0f0f0f) << 4) | ((bits & 0xf0f0f0f0) >> 4);
+	bits = ((bits & 0x33333333) << 2) | ((bits & 0xcccccccc) >> 2);
+	bits = ((bits & 0x55555555) << 1) | ((bits & 0xaaaaaaaa) >> 1);
+	return bits;
 }
 
-RadeonRays::float3 CosineDirection(float seed, const RadeonRays::float3& nor)
+RadeonRays::float2 Hammersley(std::uint32_t i, std::uint32_t samplesCount)
 {
+	float E1 = (float)i / samplesCount;
+	float E2 = ReverseBits32(i) * 2.3283064365386963e-10f;
+	return RadeonRays::float2(E1, E2);
+}
+
+RadeonRays::float2 Hammersley(std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+{
+	float E1 = (float)i / samplesCount + float(seed & 0xffff) / (1 << 16);
+	float E2 = (ReverseBits32(i) ^ seed) * 2.3283064365386963e-10f;
+	return RadeonRays::float2(E1 - std::floor(E1), E2);
+}
+
+RadeonRays::float3 HammersleySampleCos(const RadeonRays::float2& Xi)
+{
+	float phi = Xi.x * 2.0f * 3.141592654f;
+
+	float cosTheta = std::sqrt(Xi.y);
+	float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
+
+	RadeonRays::float3 H;
+	H.x = std::cos(phi) * sinTheta;
+	H.y = std::sin(phi) * sinTheta;
+	H.z = cosTheta;
+
+	return H;
+}
+
+RadeonRays::float3 HammersleySampleGGX(const RadeonRays::float2& Xi, float roughness)
+{
+	float m = roughness * roughness;
+	float m2 = m * m;
+	float u = (1.0f - Xi.y) / (1.0f + (m2 - 1) * Xi.y);
+
+	return HammersleySampleCos(RadeonRays::float2(Xi.x, u));
+}
+
+RadeonRays::float3 HammersleySampleLambert(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+{
+	auto H = HammersleySampleCos(Hammersley(i, samplesCount, seed));
+	H.z = H.z * 2.0f - 1.0f;
+	H += n;
+	H.normalize();
+
+	return H;
+}
+
+RadeonRays::float3 TangentToWorld(const RadeonRays::float3& N, const RadeonRays::float3& H)
+{
+	RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0,0,1) : RadeonRays::float3(1,0,0);
+	RadeonRays::float3 X = RadeonRays::cross(Y, N);
+	X.normalize();
+	return X * H.x + cross(N, X) * H.y + N * H.z;
+}
+
+RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, float seed)
+{
+	auto hash = [](float seed)
+	{
+		float noise = std::sin(seed) * 43758.5453;
+		return noise - std::floor(noise);
+	};
+
 	float u = hash(78.233 + seed);
 	float v = hash(10.873 + seed);
 
-	v = v * 2.0f * 3.141592654f;
-	u = u * 2.0f - 1.0f;
+	RadeonRays::float3 H = HammersleySampleCos(RadeonRays::float2(v, u));
+	H.z = H.z * 2.0f - 1.0f;
+	H += n;
+	H.normalize();
 
-	float inv_u = std::sqrt(1.0f - u * u);
+	return H;
+}
 
-	RadeonRays::float3 d = nor + RadeonRays::float3(std::cos(v) * inv_u, std::sin(v) * inv_u, u);
-	d.normalize();
-
-	return d;
+RadeonRays::float3 bsdf(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+{
+	return CosineDirection(n, 76.2 + std::sin(seed) + 17.6 * i);
 }
 
 RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::size_t seed, std::uint32_t bounce)
@@ -229,9 +307,10 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 
 	scene.api->MapBuffer(spp_ray, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * scene.spp, (void**)&rays, &e); e->Wait(); scene.api->DeleteEvent(e);
 
-	for (std::size_t i = 0; i < scene.spp; i++)
+#pragma omp parallel for
+	for (auto i = 0; i < scene.spp; i++)
 	{
-		RadeonRays::float3 rd = CosineDirection(76.2 + hash(seed) + 17.6 * i, norm);
+		RadeonRays::float3 rd = bsdf(norm, i, scene.spp, seed);
 		rd.normalize();
 
 		auto& ray = rays[i];
@@ -247,7 +326,7 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 	scene.api->UnmapBuffer(spp_ray, rays, &e); e->Wait(); scene.api->DeleteEvent(e);
 	scene.api->QueryIntersection(spp_ray, scene.spp, spp_hit, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
 	scene.api->MapBuffer(spp_hit, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * scene.spp, (void**)&hits, &e); e->Wait(); scene.api->DeleteEvent(e);
-	
+
 	for (std::size_t i = 0; i < scene.spp; i++)
 	{
 		auto& hit = hits[i];
@@ -256,12 +335,19 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 			tinyobj::mesh_t& mesh = scene.g_objshapes[hit.shapeid].mesh;
 			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
 
-			RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-			auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-			auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-			auto atten = GetPhysicalLightAttenuation(p - ro);
+			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+			{
+				colorAccum += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+			}
+			else
+			{
+				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+				auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+				auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+				auto atten = GetPhysicalLightAttenuation(p - ro);
 
-			colorAccum += diff * atten * PathTracing(scene, p, n, seed, ++bounce);
+				colorAccum += diff * atten * PathTracing(scene, p, n, seed, ++bounce);
+			}
 		}
 		else
 		{
@@ -291,10 +377,10 @@ int main()
 	RadeonRays::Event* e = nullptr;
 	RadeonRays::Intersection* isect = nullptr;
 	scene.api->MapBuffer(scene.isect_buffer, RadeonRays::kMapRead, 0, k_raypack_size * sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
-	
+
 	std::vector<RadeonRays::float3> tex_data(k_raypack_size);
-	
-	for (std::uint32_t i = 0; i < k_raypack_size; ++i)
+
+	for (std::int32_t i = 0; i < k_raypack_size; ++i)
 	{
 		int shape_id = isect[i].shapeid;
 		int prim_id = isect[i].primid;
@@ -307,7 +393,7 @@ int main()
 
 		RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
 		RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-		RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);			
+		RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 
 		std::uint32_t bounce = 0;
 		tex_data[i] += diffuse * PathTracing(scene, ro, norm, i, bounce);
@@ -317,7 +403,8 @@ int main()
 
 	std::vector<std::uint32_t> output(tex_data.size());
 
-	for (std::size_t i = 0; i < tex_data.size(); i++)
+#pragma omp parallel for
+	for (auto i = 0; i < tex_data.size(); i++)
 	{
 		std::uint8_t r = TonemapACES(tex_data[i].x / (2.0f * PI) / scene.spp) * 255;
 		std::uint8_t g = TonemapACES(tex_data[i].y / (2.0f * PI) / scene.spp) * 255;
