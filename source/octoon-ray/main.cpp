@@ -280,8 +280,7 @@ int main()
 
 				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
 				{
-					colorAccum *= scene.sky;
-					oneColor = colorAccum;
+					oneColor = colorAccum * scene.sky;
 					break;
 				}
 
@@ -289,7 +288,6 @@ int main()
 				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
 
 				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-
 				auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 				auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 				auto atten = GetPhysicalLightAttenuation(p - ro);
@@ -309,9 +307,9 @@ int main()
 
 	for (std::size_t i = 0; i < tex_data.size(); i++)
 	{
-		std::uint8_t r = TonemapACES(tex_data[i].x) * 255;
-		std::uint8_t g = TonemapACES(tex_data[i].y) * 255;
-		std::uint8_t b = TonemapACES(tex_data[i].z) * 255;
+		std::uint8_t r = TonemapACES(tex_data[i].x / (2 * PI)) * 255;
+		std::uint8_t g = TonemapACES(tex_data[i].y / (2 * PI)) * 255;
+		std::uint8_t b = TonemapACES(tex_data[i].z / (2 * PI)) * 255;
 
 		output[i] = 0xFF << 24 | r << 16 | g << 8 | b;
 	}
