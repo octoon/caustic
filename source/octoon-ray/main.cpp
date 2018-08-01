@@ -16,7 +16,7 @@ struct Scene
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
-	RadeonRays::float3 sky = { 1.0f, 1.0f, 1.0f };
+	RadeonRays::float3 sky = { 12.0f, 12.0f, 12.0f };
 	RadeonRays::float3 camera = { 0.f, 1.f, 3.f, 1000.f };
 
 	RadeonRays::IntersectionApi* api;
@@ -297,7 +297,7 @@ int main()
 				colorAccum *= diff * atten;
 			}
 
-			tex_data[i] += oneColor;
+			tex_data[i] += oneColor * (1.0f / 10);
 		}
 	}
 
@@ -307,9 +307,9 @@ int main()
 
 	for (std::size_t i = 0; i < tex_data.size(); i++)
 	{
-		std::uint8_t r = TonemapACES(tex_data[i].x / (2 * PI)) * 255;
-		std::uint8_t g = TonemapACES(tex_data[i].y / (2 * PI)) * 255;
-		std::uint8_t b = TonemapACES(tex_data[i].z / (2 * PI)) * 255;
+		std::uint8_t r = TonemapACES(tex_data[i].x / (2.0f * PI)) * 255;
+		std::uint8_t g = TonemapACES(tex_data[i].y / (2.0f * PI)) * 255;
+		std::uint8_t b = TonemapACES(tex_data[i].z / (2.0f * PI)) * 255;
 
 		output[i] = 0xFF << 24 | r << 16 | g << 8 | b;
 	}
