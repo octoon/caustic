@@ -1,6 +1,7 @@
 #include <radeon_rays.h>
 #include <assert.h>
 #include <fstream>
+#include <iostream>
 #include "tiny_obj_loader.h"
 
 struct Scene
@@ -298,6 +299,9 @@ int main()
 			}
 
 			tex_data[i] += oneColor * (1.0f / 10);
+
+			if (i % 1000 == 0)
+				std::cout << (float)i / k_raypack_size << std::endl;
 		}
 	}
 
