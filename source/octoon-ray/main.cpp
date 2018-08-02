@@ -19,12 +19,12 @@ struct Scene
 
 	GLuint texture = 0;
 
-	std::uint32_t spp = 10;
+	std::uint32_t spp = 100;
 	std::uint32_t bounce = 2;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
-	RadeonRays::float3 sky = { 1.0f, 1.0f, 1.0f };
+	RadeonRays::float3 sky = 0;// { 1.0f, 1.0f, 1.0f };
 	RadeonRays::float3 camera = { 0.f, 1.f, 3.f, 1000.f };
 
 	RadeonRays::IntersectionApi* api;
@@ -436,16 +436,18 @@ int main()
 				tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
 				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
 
-				RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-				RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-				RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-
-				std::uint32_t bounce = 0;
-
 				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 					scene.hdr[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
 				else
+				{
+					std::uint32_t bounce = 0;
+
+					RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+					RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+					RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+
 					scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / scene.spp);
+				}
 			}
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
