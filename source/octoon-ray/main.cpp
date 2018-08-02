@@ -426,56 +426,53 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, GL_NONE);
 
-	std::vector<int> hits(scene.width);
-	std::vector<RadeonRays::float3> diffuses(scene.width);
-	std::vector<RadeonRays::float3> normals(scene.width);
-	std::vector<RadeonRays::float3> position(scene.width);
+	std::vector<std::uint8_t> hits(scene.width * scene.height);
+	std::vector<RadeonRays::float3> albede(scene.width * scene.height);
+	std::vector<RadeonRays::float3> normals(scene.width * scene.height);
+	std::vector<RadeonRays::float3> position(scene.width * scene.height);
 
 	for (std::uint32_t frame = 1; ; frame++)
 	{
+#pragma omp parallel for
+		for (std::int32_t i = 0; i < scene.width * scene.height; ++i)
+		{
+			int shape_id = isect[i].shapeid;
+			int prim_id = isect[i].primid;
+
+			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+				continue;
+
+			tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
+			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
+
+			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+			{
+				hits[i] = false;
+				scene.hdr[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+			}
+			else
+			{
+				hits[i] = true;
+				normals[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+				position[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+				albede[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+			}
+		}
+
 		for (std::int32_t y = scene.height - 1; y > 0; y--)
 		{
-#pragma omp parallel for
-			for (std::int32_t x = 0; x < scene.width; ++x)
+			for (std::uint32_t i = y * scene.width; i < y * scene.width + scene.width; ++i)
 			{
-				int i = y * scene.width + x;
-				int shape_id = isect[i].shapeid;
-				int prim_id = isect[i].primid;
-
-				if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
-					continue;
-
-				tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
-				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
-
-				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
-				{
-					hits[x] = -1;
-					scene.hdr[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
-				}
-				else
-				{
-					hits[x] = i;
-					normals[x] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-					position[x] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-					diffuses[x] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-				}
-			}
-
-			for (std::uint32_t x = 0; x < scene.width; ++x)
-			{
-				auto i = hits[x];
-				if (i >= 0)
+				if (hits[i] >= 0)
 				{
 					std::uint32_t bounce = 0;
-					scene.hdr[i] += diffuses[x] * PathTracing(scene, position[x], normals[x], i * frame, bounce) * (1.0f / scene.spp);
+					scene.hdr[i] += albede[i] * PathTracing(scene, position[i], normals[i], i * frame, bounce) * (1.0f / scene.spp);
 				}
 			}
 
 #pragma omp parallel for
-			for (std::int32_t x = 0; x < scene.width; ++x)
+			for (std::int32_t i = y * scene.width; i < y * scene.width + scene.width; ++i)
 			{
-				int i = y * scene.width + x;
 				std::uint8_t r = TonemapACES(scene.hdr[i].x / frame) * 255;
 				std::uint8_t g = TonemapACES(scene.hdr[i].y / frame) * 255;
 				std::uint8_t b = TonemapACES(scene.hdr[i].z / frame) * 255;
