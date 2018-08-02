@@ -433,18 +433,15 @@ int main()
 
 				std::uint32_t bounce = 0;
 
-				if (frame == 1)
-					scene.hdr[i] = diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
-				else
-					scene.hdr[i] = RadeonRays::lerp(scene.hdr[i], diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp)), 0.5f);
+				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
 			}
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
 			{
 				int i = y * scene.width + x;
-				std::uint8_t r = TonemapACES(scene.hdr[i].x) * 255;
-				std::uint8_t g = TonemapACES(scene.hdr[i].y) * 255;
-				std::uint8_t b = TonemapACES(scene.hdr[i].z) * 255;
+				std::uint8_t r = TonemapACES(scene.hdr[i].x / frame) * 255;
+				std::uint8_t g = TonemapACES(scene.hdr[i].y / frame) * 255;
+				std::uint8_t b = TonemapACES(scene.hdr[i].z / frame) * 255;
 
 				scene.ldr[i] = 0xFF << 24 | b << 16 | g << 8 | r;
 			}
