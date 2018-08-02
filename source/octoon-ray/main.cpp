@@ -1,6 +1,8 @@
 #include <radeon_rays.h>
 #include <assert.h>
 #include <fstream>
+#include <GLFW/glfw3.h>
+#include <GL/GL.h>
 #include "tiny_obj_loader.h"
 
 struct Scene
@@ -11,11 +13,14 @@ struct Scene
 	unsigned g_vertex_buffer, g_index_buffer;
 	unsigned g_texture;
 
-	int g_window_width = 640;
-	int g_window_height = 480;
+	GLFWwindow* window = nullptr;
+	int width = 640;
+	int height = 480;
+
+	GLuint texture = 0;
 
 	std::uint32_t spp = 10;
-	std::uint32_t bounce = 0;
+	std::uint32_t bounce = 1;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
@@ -27,6 +32,9 @@ struct Scene
 	RadeonRays::Buffer* isect_buffer;
 
 	std::vector<RadeonRays::ray> rays;
+
+	std::vector<std::uint32_t> ldr;
+	std::vector<RadeonRays::float3> hdr;
 };
 
 bool init_data(Scene& scene)
@@ -34,7 +42,22 @@ bool init_data(Scene& scene)
 	std::string basepath = "../Resources/CornellBox/";
 	std::string filename = basepath + "orig.objm";
 	std::string res = LoadObj(scene.g_objshapes, scene.g_objmaterials, filename.c_str(), basepath.c_str());
+
+	scene.ldr.resize(scene.width * scene.height);
+	scene.hdr.resize(scene.width * scene.height);
+
 	return res != "" ? false : true;
+}
+
+bool init_Window(Scene& scene)
+{
+	if (::glfwInit() == GL_FALSE)
+		return false;
+
+	scene.window = ::glfwCreateWindow(scene.width, scene.height, "Octoon Ray", nullptr, nullptr);
+	::glfwMakeContextCurrent(scene.window);
+
+	return scene.window != nullptr;
 }
 
 bool init_RadeonRays(Scene& scene)
@@ -92,25 +115,25 @@ bool init_RadeonRays_Scene(Scene& scene)
 
 bool init_RadeonRays_Camera(Scene& scene)
 {
-	const int k_raypack_size = scene.g_window_height * scene.g_window_width;
+	const int k_raypack_size = scene.height * scene.width;
 
 	// Prepare rays. One for each texture pixel.
 	std::vector<RadeonRays::ray> rays(k_raypack_size);
 
 #pragma omp parallel for
-	for (int i = 0; i < scene.g_window_height; ++i)
+	for (int i = 0; i < scene.height; ++i)
 	{
-		for (int j = 0; j < scene.g_window_width; ++j)
+		for (int j = 0; j < scene.width; ++j)
 		{
-			const float xstep = 2.f / (float)scene.g_window_width;
-			const float ystep = 2.f / (float)scene.g_window_height;
+			const float xstep = 2.f / (float)scene.width;
+			const float ystep = 2.f / (float)scene.height;
 			float x = -1.f + xstep * (float)j;
 			float y = ystep * (float)i;
 			float z = 1.f;
 
-			rays[i * scene.g_window_width + j].o = scene.camera;
-			rays[i * scene.g_window_width + j].d = RadeonRays::float3(x - scene.camera.x, y - scene.camera.y, z - scene.camera.z);
-			rays[i * scene.g_window_width + j].d.normalize();
+			rays[i * scene.width + j].o = scene.camera;
+			rays[i * scene.width + j].d = RadeonRays::float3(x - scene.camera.x, y - scene.camera.y, z - scene.camera.z);
+			rays[i * scene.width + j].d.normalize();
 		}
 	}
 
@@ -287,12 +310,12 @@ RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, float seed)
 	return H;
 }
 
-RadeonRays::float3 bsdf(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+RadeonRays::float3 bsdf(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint64_t seed)
 {
 	return CosineDirection(n, seed + float(i) / samplesCount);
 }
 
-RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::size_t seed, std::uint32_t bounce)
+RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::uint64_t seed, std::uint32_t bounce)
 {
 	if (bounce > scene.bounce)
 		return RadeonRays::float3(0.0f, 0.0f, 0.0f);
@@ -360,60 +383,86 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 	scene.api->DeleteBuffer(spp_ray);
 	scene.api->DeleteBuffer(spp_hit);
 
-	return colorAccum;
+	return colorAccum * (1.0f / (2.0f * PI * scene.spp));
 }
 
 int main()
 {
 	Scene scene;
 	if (!init_data(scene)) return false;
+	if (!init_Window(scene)) return false;
 	if (!init_RadeonRays(scene)) return false;
 	if (!init_RadeonRays_Scene(scene)) return false;
 	if (!init_RadeonRays_Camera(scene)) return false;
 
-	const std::uint32_t k_raypack_size = scene.g_window_height * scene.g_window_width;
-	scene.api->QueryIntersection(scene.ray_buffer, k_raypack_size, scene.isect_buffer, nullptr, nullptr);
-
 	RadeonRays::Event* e = nullptr;
 	RadeonRays::Intersection* isect = nullptr;
-	scene.api->MapBuffer(scene.isect_buffer, RadeonRays::kMapRead, 0, k_raypack_size * sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
 
-	std::vector<RadeonRays::float3> tex_data(k_raypack_size);
+	scene.api->QueryIntersection(scene.ray_buffer, scene.height * scene.width, scene.isect_buffer, nullptr, nullptr);
+	scene.api->MapBuffer(scene.isect_buffer, RadeonRays::kMapRead, 0, scene.height * scene.width * sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); scene.api->DeleteEvent(e);
 
-	for (std::int32_t i = 0; i < k_raypack_size; ++i)
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glEnable(GL_TEXTURE_2D);
+	glGenTextures(1, &scene.texture);
+	glBindTexture(GL_TEXTURE_2D, scene.texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, GL_NONE);
+
+	for (std::uint32_t frame = 1; ; frame++)
 	{
-		int shape_id = isect[i].shapeid;
-		int prim_id = isect[i].primid;
+		if (::glfwWindowShouldClose(scene.window))
+			break;
 
-		if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
-			continue;
+		for (std::uint32_t y = scene.height - 1; y >= 0; y--)
+		{
+			for (std::uint32_t x = 0; x < scene.width; ++x)
+			{
+				int i = y * scene.width + x;
+				int shape_id = isect[i].shapeid;
+				int prim_id = isect[i].primid;
 
-		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
-		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
+				if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+					continue;
 
-		RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-		RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-		RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+				tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
+				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
 
-		std::uint32_t bounce = 0;
-		tex_data[i] += diffuse * PathTracing(scene, ro, norm, i, bounce);
+				RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+				RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+				RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+
+				std::uint32_t bounce = 0;
+
+				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce);
+			}
+
+			for (std::uint32_t x = 0; x < scene.width; ++x)
+			{
+				int i = y * scene.width + x;
+				std::uint8_t r = TonemapACES(scene.hdr[i].x) * 255;
+				std::uint8_t g = TonemapACES(scene.hdr[i].y) * 255;
+				std::uint8_t b = TonemapACES(scene.hdr[i].z) * 255;
+
+				scene.ldr[i] = 0xFF << 24 | b << 16 | g << 8 | r;
+			}
+
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, scene.width, 1, GL_RGBA, GL_UNSIGNED_BYTE, &scene.ldr[y * scene.width]);
+
+			glBegin(GL_QUADS);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 0.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 0.0f);
+			glEnd();
+
+			glfwPollEvents();
+			glfwSwapBuffers(scene.window);
+		}
 	}
 
 	RadeonRays::IntersectionApi::Delete(scene.api);
-
-	std::vector<std::uint32_t> output(tex_data.size());
-
-#pragma omp parallel for
-	for (auto i = 0; i < tex_data.size(); i++)
-	{
-		std::uint8_t r = TonemapACES(tex_data[i].x / (2.0f * PI) / scene.spp) * 255;
-		std::uint8_t g = TonemapACES(tex_data[i].y / (2.0f * PI) / scene.spp) * 255;
-		std::uint8_t b = TonemapACES(tex_data[i].z / (2.0f * PI) / scene.spp) * 255;
-
-		output[i] = 0xFF << 24 | r << 16 | g << 8 | b;
-	}
-
-	dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)output.data(), scene.g_window_width, scene.g_window_height, 4);
-
     return 0;
 }
