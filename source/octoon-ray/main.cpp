@@ -19,8 +19,8 @@ struct Scene
 
 	GLuint texture = 0;
 
-	std::uint32_t spp = 100;
-	std::uint32_t bounce = 2;
+	std::uint32_t spp = 10;
+	std::uint32_t bounce = 1;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
@@ -335,6 +335,8 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 	if (bounce > scene.bounce)
 		return RadeonRays::float3(0.0f, 0.0f, 0.0f);
 
+	bounce++;
+
 	RadeonRays::ray* rays = nullptr;
 	RadeonRays::Event* e = nullptr;
 	RadeonRays::Intersection* hits = nullptr;
@@ -365,7 +367,13 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 	scene.api->QueryIntersection(spp_ray, scene.spp, spp_hit, nullptr, &e); e->Wait(); scene.api->DeleteEvent(e);
 	scene.api->MapBuffer(spp_hit, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * scene.spp, (void**)&hits, &e); e->Wait(); scene.api->DeleteEvent(e);
 
-	for (std::size_t i = 0; i < scene.spp; i++)
+	std::vector<std::uint8_t> inects(scene.spp, false);
+	std::vector<RadeonRays::float3> albede(scene.spp);
+	std::vector<RadeonRays::float3> normals(scene.spp);
+	std::vector<RadeonRays::float3> position(scene.spp);
+
+#pragma omp parallel for
+	for (std::int32_t i = 0; i < scene.spp; i++)
 	{
 		auto& hit = hits[i];
 		if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
@@ -374,17 +382,13 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[hit.primid]];
 
 			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
-			{
 				colorAccum += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
-			}
 			else
 			{
-				RadeonRays::float3 diff(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-				auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-				auto n = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-				auto atten = GetPhysicalLightAttenuation(p - ro);
-
-				colorAccum += diff * atten * PathTracing(scene, p, n, seed, ++bounce);
+				inects[i] = true;
+				albede[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+				position[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+				normals[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 			}
 		}
 		else
@@ -397,6 +401,12 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 
 	scene.api->DeleteBuffer(spp_ray);
 	scene.api->DeleteBuffer(spp_hit);
+
+	for (std::size_t i = 0; i < scene.spp; i++)
+	{
+		if (inects[i])
+			colorAccum += albede[i] * PathTracing(scene, position[i], normals[i], seed, bounce) * (1.0f / scene.spp) * GetPhysicalLightAttenuation(position[i] - ro);
+	}
 
 	return colorAccum;
 }
@@ -500,6 +510,5 @@ int main()
 		}
 	}
 
-	
     return 0;
 }
