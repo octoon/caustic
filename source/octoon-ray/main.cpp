@@ -115,6 +115,12 @@ bool init_RadeonRays_Scene(Scene& scene)
 
 bool init_RadeonRays_Camera(Scene& scene)
 {
+	auto hash = [](float seed)
+	{
+		float noise = std::sin(seed) * 43758.5453;
+		return noise - std::floor(noise);
+	};
+
 	const int k_raypack_size = scene.height * scene.width;
 
 	// Prepare rays. One for each texture pixel.
@@ -127,8 +133,8 @@ bool init_RadeonRays_Camera(Scene& scene)
 		{
 			const float xstep = 2.f / (float)scene.width;
 			const float ystep = 2.f / (float)scene.height;
-			float x = -1.f + xstep * (float)j;
-			float y = ystep * (float)i;
+			float x = -1.f + xstep * (float)j + hash(i * 6549 + j * 1396) / scene.width;
+			float y = ystep * (float)i + hash(i * 649 + j * 136) / scene.height;
 			float z = 1.f;
 
 			rays[i * scene.width + j].o = scene.camera;
