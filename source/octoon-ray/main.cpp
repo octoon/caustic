@@ -20,7 +20,7 @@ struct Scene
 	GLuint texture = 0;
 
 	std::uint32_t spp = 10;
-	std::uint32_t bounce = 2;
+	std::uint32_t bounce = 1;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
@@ -433,7 +433,10 @@ int main()
 
 				std::uint32_t bounce = 0;
 
-				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
+				if (frame == 1)
+					scene.hdr[i] = diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
+				else
+					scene.hdr[i] = RadeonRays::lerp(scene.hdr[i], diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp)), 0.5f);
 			}
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
