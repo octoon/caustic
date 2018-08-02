@@ -24,7 +24,7 @@ struct Scene
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
-	RadeonRays::float3 sky = { 12.0f, 12.0f, 12.0f };
+	RadeonRays::float3 sky = { 2.0f, 2.0f, 2.0f };
 	RadeonRays::float3 camera = { 0.f, 1.f, 3.f, 1000.f };
 
 	RadeonRays::IntersectionApi* api;
@@ -249,6 +249,15 @@ RadeonRays::float2 Hammersley(std::uint32_t i, std::uint32_t samplesCount, std::
 	return RadeonRays::float2(E1 - std::floor(E1), E2);
 }
 
+RadeonRays::float3 SampleHemisphereUniform(const RadeonRays::float2& Xi)
+{
+	float phi = Xi.y * 2.0 * PI;
+	float cosTheta = 1.0 - Xi.x;
+	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+	return RadeonRays::float3(std::cos(phi) * sinTheta, cosTheta, std::sin(phi) * sinTheta);
+}
+
 RadeonRays::float3 HammersleySampleCos(const RadeonRays::float2& Xi)
 {
 	float phi = Xi.x * 2.0f * 3.141592654f;
@@ -433,7 +442,10 @@ int main()
 
 				std::uint32_t bounce = 0;
 
-				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
+				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+					scene.hdr[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+				else
+					scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / scene.spp);
 			}
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
