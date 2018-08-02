@@ -20,7 +20,7 @@ struct Scene
 	GLuint texture = 0;
 
 	std::uint32_t spp = 10;
-	std::uint32_t bounce = 1;
+	std::uint32_t bounce = 2;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
@@ -383,7 +383,7 @@ RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const
 	scene.api->DeleteBuffer(spp_ray);
 	scene.api->DeleteBuffer(spp_hit);
 
-	return colorAccum * (1.0f / (2.0f * PI * scene.spp));
+	return colorAccum;
 }
 
 int main()
@@ -411,12 +411,9 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, GL_NONE);
 
-	for (std::uint32_t frame = 1; ; frame++)
+	for (std::uint32_t frame = 0; ; frame++)
 	{
-		if (::glfwWindowShouldClose(scene.window))
-			break;
-
-		for (std::uint32_t y = scene.height - 1; y >= 0; y--)
+		for (std::int32_t y = scene.height - 1; y > 0; y--)
 		{
 			for (std::uint32_t x = 0; x < scene.width; ++x)
 			{
@@ -436,7 +433,7 @@ int main()
 
 				std::uint32_t bounce = 0;
 
-				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce);
+				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i + frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
 			}
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
@@ -460,6 +457,9 @@ int main()
 
 			glfwPollEvents();
 			glfwSwapBuffers(scene.window);
+
+			if (::glfwWindowShouldClose(scene.window))
+				std::exit(0);
 		}
 	}
 
