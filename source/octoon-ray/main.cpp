@@ -24,7 +24,7 @@ struct Scene
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
-	RadeonRays::float3 sky = { 2.0f, 2.0f, 2.0f };
+	RadeonRays::float3 sky = { 1.0f, 1.0f, 1.0f };
 	RadeonRays::float3 camera = { 0.f, 1.f, 3.f, 1000.f };
 
 	RadeonRays::IntersectionApi* api;
