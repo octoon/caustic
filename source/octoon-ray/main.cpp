@@ -291,14 +291,14 @@ RadeonRays::float3 TangentToWorld(const RadeonRays::float3& N, const RadeonRays:
 	return X * H.x + cross(N, X) * H.y + N * H.z;
 }
 
+float hash(float seed)
+{
+	float noise = std::sin(seed) * 43758.5453;
+	return noise - std::floor(noise);
+};
+
 RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, float seed)
 {
-	auto hash = [](float seed)
-	{
-		float noise = std::sin(seed) * 43758.5453;
-		return noise - std::floor(noise);
-	};
-
 	float u = hash(78.233 + seed);
 	float v = hash(10.873 + seed);
 
@@ -312,7 +312,7 @@ RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, float seed)
 
 RadeonRays::float3 bsdf(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint64_t seed)
 {
-	return CosineDirection(n, seed + float(i) / samplesCount);
+	return CosineDirection(n, hash(seed) + float(i) / samplesCount);
 }
 
 RadeonRays::float3 PathTracing(Scene& scene, const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::uint64_t seed, std::uint32_t bounce)
@@ -411,7 +411,7 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, GL_NONE);
 
-	for (std::uint32_t frame = 0; ; frame++)
+	for (std::uint32_t frame = 1; ; frame++)
 	{
 		for (std::int32_t y = scene.height - 1; y > 0; y--)
 		{
@@ -433,7 +433,7 @@ int main()
 
 				std::uint32_t bounce = 0;
 
-				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i + frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
+				scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / (2.0f * PI * scene.spp));
 			}
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
