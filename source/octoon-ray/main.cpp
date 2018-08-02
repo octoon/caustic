@@ -3,6 +3,7 @@
 #include <fstream>
 #include <GLFW/glfw3.h>
 #include <GL/GL.h>
+#include <random>
 #include "tiny_obj_loader.h"
 
 struct Scene
@@ -24,7 +25,7 @@ struct Scene
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
-	RadeonRays::float3 sky = 0;// { 1.0f, 1.0f, 1.0f };
+	RadeonRays::float3 sky = { 1.0f, 1.0f, 1.0f };
 	RadeonRays::float3 camera = { 0.f, 1.f, 3.f, 1000.f };
 
 	RadeonRays::IntersectionApi* api;
@@ -211,7 +212,7 @@ inline float TonemapACES(float x)
 	const float C = 2.43f;
 	const float D = 0.59f;
 	const float E = 0.14f;
-	return std::min(1.0f, (x * (A * x + B)) / (x * (C * x + D) + E));
+	return std::pow(std::min(1.0f, (x * (A * x + B)) / (x * (C * x + D) + E)), 1.0f / 2.2f);
 }
 
 float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
@@ -420,13 +421,22 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, GL_NONE);
 
+	std::random_device rd;
+	std::mt19937 g(rd());
+	std::vector<int> v(scene.width * scene.height);
+
+	for (std::uint32_t x = 0; x < scene.width * scene.height; ++x)
+		v[x] = x;
+
 	for (std::uint32_t frame = 1; ; frame++)
 	{
-		for (std::int32_t y = scene.height - 1; y > 0; y--)
+		std::shuffle(v.begin(), v.end(), g);
+
+		for (std::int32_t y = 0; y < scene.height; y++)
 		{
 			for (std::uint32_t x = 0; x < scene.width; ++x)
 			{
-				int i = y * scene.width + x;
+				int i = v[y * scene.width + x];
 				int shape_id = isect[i].shapeid;
 				int prim_id = isect[i].primid;
 
@@ -452,7 +462,7 @@ int main()
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
 			{
-				int i = y * scene.width + x;
+				int i = v[y * scene.width + x];
 				std::uint8_t r = TonemapACES(scene.hdr[i].x / frame) * 255;
 				std::uint8_t g = TonemapACES(scene.hdr[i].y / frame) * 255;
 				std::uint8_t b = TonemapACES(scene.hdr[i].z / frame) * 255;
@@ -460,7 +470,7 @@ int main()
 				scene.ldr[i] = 0xFF << 24 | b << 16 | g << 8 | r;
 			}
 
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, scene.width, 1, GL_RGBA, GL_UNSIGNED_BYTE, &scene.ldr[y * scene.width]);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scene.ldr.data());
 
 			glBegin(GL_QUADS);
 			glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
