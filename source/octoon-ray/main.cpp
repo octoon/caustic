@@ -20,7 +20,7 @@ struct Scene
 	GLuint texture = 0;
 
 	std::uint32_t spp = 10;
-	std::uint32_t bounce = 1;
+	std::uint32_t bounce = 2;
 
 	// Point light position
 	RadeonRays::float3 light = { -0.01f, 1.9f, 0.1f };
@@ -459,10 +459,13 @@ int main()
 			glfwSwapBuffers(scene.window);
 
 			if (::glfwWindowShouldClose(scene.window))
+			{
+				RadeonRays::IntersectionApi::Delete(scene.api);
 				std::exit(0);
+			}
 		}
 	}
 
-	RadeonRays::IntersectionApi::Delete(scene.api);
+	
     return 0;
 }
