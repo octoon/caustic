@@ -426,11 +426,17 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, GL_NONE);
 
+	std::vector<int> hits(scene.width);
+	std::vector<RadeonRays::float3> diffuses(scene.width);
+	std::vector<RadeonRays::float3> normals(scene.width);
+	std::vector<RadeonRays::float3> position(scene.width);
+
 	for (std::uint32_t frame = 1; ; frame++)
 	{
 		for (std::int32_t y = scene.height - 1; y > 0; y--)
 		{
-			for (std::uint32_t x = 0; x < scene.width; ++x)
+#pragma omp parallel for
+			for (std::int32_t x = 0; x < scene.width; ++x)
 			{
 				int i = y * scene.width + x;
 				int shape_id = isect[i].shapeid;
@@ -443,20 +449,31 @@ int main()
 				tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
 
 				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+				{
+					hits[x] = -1;
 					scene.hdr[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+				}
 				else
 				{
-					std::uint32_t bounce = 0;
-
-					RadeonRays::float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-					RadeonRays::float3 ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-					RadeonRays::float3 diffuse(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-
-					scene.hdr[i] += diffuse * PathTracing(scene, ro, norm, i * frame, bounce) * (1.0f / scene.spp);
+					hits[x] = i;
+					normals[x] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+					position[x] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+					diffuses[x] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 				}
 			}
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
+			{
+				auto i = hits[x];
+				if (i >= 0)
+				{
+					std::uint32_t bounce = 0;
+					scene.hdr[i] += diffuses[x] * PathTracing(scene, position[x], normals[x], i * frame, bounce) * (1.0f / scene.spp);
+				}
+			}
+
+#pragma omp parallel for
+			for (std::int32_t x = 0; x < scene.width; ++x)
 			{
 				int i = y * scene.width + x;
 				std::uint8_t r = TonemapACES(scene.hdr[i].x / frame) * 255;
