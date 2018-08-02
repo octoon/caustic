@@ -441,34 +441,34 @@ int main()
 	std::vector<RadeonRays::float3> normals(scene.width * scene.height);
 	std::vector<RadeonRays::float3> position(scene.width * scene.height);
 
+#pragma omp parallel for
+	for (std::int32_t i = 0; i < scene.width * scene.height; ++i)
+	{
+		int shape_id = isect[i].shapeid;
+		int prim_id = isect[i].primid;
+
+		if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+			continue;
+
+		tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
+		tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
+
+		if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+		{
+			hits[i] = false;
+			scene.hdr[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+		}
+		else
+		{
+			hits[i] = true;
+			normals[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+			position[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+			albede[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+		}
+	}
+
 	for (std::uint32_t frame = 1; ; frame++)
 	{
-#pragma omp parallel for
-		for (std::int32_t i = 0; i < scene.width * scene.height; ++i)
-		{
-			int shape_id = isect[i].shapeid;
-			int prim_id = isect[i].primid;
-
-			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
-				continue;
-
-			tinyobj::mesh_t& mesh = scene.g_objshapes[shape_id].mesh;
-			tinyobj::material_t& mat = scene.g_objmaterials[mesh.material_ids[prim_id]];
-
-			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
-			{
-				hits[i] = false;
-				scene.hdr[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
-			}
-			else
-			{
-				hits[i] = true;
-				normals[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-				position[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-				albede[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-			}
-		}
-
 		for (std::int32_t y = scene.height - 1; y > 0; y--)
 		{
 			for (std::uint32_t i = y * scene.width; i < y * scene.width + scene.width; ++i)
