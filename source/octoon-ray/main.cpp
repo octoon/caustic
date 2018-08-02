@@ -3,7 +3,6 @@
 #include <fstream>
 #include <GLFW/glfw3.h>
 #include <GL/GL.h>
-#include <random>
 #include "tiny_obj_loader.h"
 
 struct Scene
@@ -421,22 +420,13 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, GL_NONE);
 
-	std::random_device rd;
-	std::mt19937 g(rd());
-	std::vector<int> v(scene.width * scene.height);
-
-	for (std::uint32_t x = 0; x < scene.width * scene.height; ++x)
-		v[x] = x;
-
 	for (std::uint32_t frame = 1; ; frame++)
 	{
-		std::shuffle(v.begin(), v.end(), g);
-
-		for (std::int32_t y = 0; y < scene.height; y++)
+		for (std::int32_t y = scene.height - 1; y > 0; y--)
 		{
 			for (std::uint32_t x = 0; x < scene.width; ++x)
 			{
-				int i = v[y * scene.width + x];
+				int i = y * scene.width + x;
 				int shape_id = isect[i].shapeid;
 				int prim_id = isect[i].primid;
 
@@ -462,7 +452,7 @@ int main()
 
 			for (std::uint32_t x = 0; x < scene.width; ++x)
 			{
-				int i = v[y * scene.width + x];
+				int i = y * scene.width + x;
 				std::uint8_t r = TonemapACES(scene.hdr[i].x / frame) * 255;
 				std::uint8_t g = TonemapACES(scene.hdr[i].y / frame) * 255;
 				std::uint8_t b = TonemapACES(scene.hdr[i].z / frame) * 255;
@@ -470,7 +460,7 @@ int main()
 				scene.ldr[i] = 0xFF << 24 | b << 16 | g << 8 | r;
 			}
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scene.width, scene.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scene.ldr.data());
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, scene.width, 1, GL_RGBA, GL_UNSIGNED_BYTE, &scene.ldr[y * scene.width]);
 
 			glBegin(GL_QUADS);
 			glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
