@@ -19,7 +19,7 @@ namespace octoon
 		float s2 = 1.0 - dt * dt;
 		float st2 = refractRatio * refractRatio * s2;
 		float cost2 = 1 - st2;
-		return (inVec - normal * dt) * refractRatio - normal * sqrt(cost2);
+		return (inVec - normal * dt) * refractRatio - normal * std::sqrt(cost2);
 	}
 
 	float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
