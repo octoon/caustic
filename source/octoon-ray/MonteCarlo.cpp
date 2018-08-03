@@ -210,7 +210,7 @@ namespace octoon
 			ray.SetTime(0.0f);
 			ray.SetMask(-1);
 			ray.SetActive(true);
-			ray.SetDoBackfaceCulling(false);
+			ray.SetDoBackfaceCulling(ior > 1.0f ? false : true);
 		}
 
 		api_->UnmapBuffer(spp_ray, rays, &e); e->Wait(); api_->DeleteEvent(e);
