@@ -31,37 +31,32 @@ namespace octoon
 		return attenuation;
 	}
 
-	float hash(float seed)
+	RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, std::uint32_t i, std::uint32_t samplesCount)
 	{
-		float noise = std::sin(seed) * 43758.5453f;
-		return noise - std::floor(noise);
-	};
-
-	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, float seed)
-	{
-		float u = hash(78.233f + seed);
-		float v = hash(10.873f + seed);
-
-		RadeonRays::float3 H = HammersleySampleCos(RadeonRays::float2(v, u));
-		H.z = H.z * 2.0f - 1.0f;
-		H += n;
-		H.normalize();
-
-		return H;
+		auto H = ImportanceSampleGGX(Hammersley(i, samplesCount), roughness);
+		return TangentToWorld(H, n);
 	}
 
-	RadeonRays::float3 bsdf(const RadeonRays::float3& rd, const RadeonRays::float3& n, float shininess, float ior, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount)
 	{
-		if (shininess > 0) 
+		RadeonRays::float3 H = CosineSampleHemisphere(Hammersley(i, samplesCount));
+		return TangentToWorld(H, n);
+	}
+
+	RadeonRays::float3 bsdf(const RadeonRays::float3& rd, const RadeonRays::float3& n, float roughness, float ior, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+	{
+		if (roughness > 0)
 		{
-			if (shininess > hash(seed + float(i) / samplesCount) * 2049.0f)
-				return RadeonRays::normalize(reflect(rd, n));
+			auto R = RadeonRays::normalize(reflect(rd, n));
+			return LobeDirection(R, i, samplesCount, roughness);
 		}
 
 		if (ior > 1.0f)
+		{
 			return RadeonRays::normalize(refract(rd, n, ior));
+		}
 
-		return CosineDirection(n, hash(seed) + float(i) / samplesCount);
+		return CosineDirection(n, i, samplesCount);
 	}
 }
 

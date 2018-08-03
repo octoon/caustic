@@ -29,16 +29,47 @@ namespace octoon
 		return RadeonRays::float2(E1 - std::floor(E1), E2);
 	}
 
+	inline RadeonRays::float4 UniformSampleSphere(const RadeonRays::float2& Xi)
+	{
+		float Phi = 2 * PI * Xi.x;
+		float CosTheta = 1 - 2 * Xi.y;
+		float SinTheta = sqrt(1 - CosTheta * CosTheta);
+
+		RadeonRays::float4 H;
+		H.x = SinTheta * cos(Phi);
+		H.y = SinTheta * sin(Phi);
+		H.z = CosTheta;
+		H.w = 1.0 / (4 * PI);
+
+		return H;
+	}
+
+	inline RadeonRays::float3 UniformSampleHemisphere(const RadeonRays::float2& Xi)
+	{
+		float phi = Xi.x * 2 * PI;
+
+		float cosTheta = Xi.y;
+		float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
+
+		RadeonRays::float3 H;
+		H.x = std::cos(phi) * sinTheta;
+		H.y = std::sin(phi) * sinTheta;
+		H.z = cosTheta;
+		H.w = 1.0f / (2 * PI);
+
+		return H;
+	}
+
 	inline RadeonRays::float3 HemisphereSampleUniform(const RadeonRays::float2& Xi)
 	{
 		float phi = Xi.y * 2.0f * PI;
 		float cosTheta = 1.0f - Xi.x;
-		float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+		float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
 
 		return RadeonRays::float3(std::cos(phi) * sinTheta, cosTheta, std::sin(phi) * sinTheta);
 	}
 
-	inline RadeonRays::float3 HammersleySampleCos(const RadeonRays::float2& Xi)
+	inline RadeonRays::float3 CosineSampleHemisphere(const RadeonRays::float2& Xi)
 	{
 		float phi = Xi.x * 2.0f * PI;
 
@@ -49,22 +80,23 @@ namespace octoon
 		H.x = std::cos(phi) * sinTheta;
 		H.y = std::sin(phi) * sinTheta;
 		H.z = cosTheta;
+		H.w = cosTheta * (1 / PI);
 
 		return H;
 	}
 
-	inline RadeonRays::float3 HammersleySampleGGX(const RadeonRays::float2& Xi, float roughness)
+	inline RadeonRays::float3 ImportanceSampleGGX(const RadeonRays::float2& Xi, float roughness)
 	{
 		float m = roughness * roughness;
 		float m2 = m * m;
 		float u = (1.0f - Xi.y) / (1.0f + (m2 - 1) * Xi.y);
 
-		return HammersleySampleCos(RadeonRays::float2(Xi.x, u));
+		return CosineSampleHemisphere(RadeonRays::float2(Xi.x, u));
 	}
 
 	inline RadeonRays::float3 HammersleySampleLambert(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
 	{
-		auto H = HammersleySampleCos(Hammersley(i, samplesCount, seed));
+		auto H = CosineSampleHemisphere(Hammersley(i, samplesCount, seed));
 		H.z = H.z * 2.0f - 1.0f;
 		H += n;
 		H.normalize();
@@ -72,12 +104,26 @@ namespace octoon
 		return H;
 	}
 
-	inline RadeonRays::float3 TangentToWorld(const RadeonRays::float3& N, const RadeonRays::float3& H)
+	inline RadeonRays::float3 TangentToWorld(const RadeonRays::float3& H, const RadeonRays::float3& N)
 	{
 		RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0, 0, 1) : RadeonRays::float3(1, 0, 0);
-		RadeonRays::float3 X = RadeonRays::cross(Y, N);
-		X.normalize();
+		RadeonRays::float3 X = RadeonRays::normalize(RadeonRays::cross(Y, N));
 		return X * H.x + cross(N, X) * H.y + N * H.z;
+	}
+
+	static const unsigned short FaurePermutation[5 * 5 * 5] = { 0, 75, 50, 25, 100, 15, 90, 65, 40, 115, 10, 85, 60, 35, 110, 5, 80, 55,
+		30, 105, 20, 95, 70, 45, 120, 3, 78, 53, 28, 103, 18, 93, 68, 43, 118, 13, 88, 63, 38, 113, 8, 83, 58, 33, 108,
+		23, 98, 73, 48, 123, 2, 77, 52, 27, 102, 17, 92, 67, 42, 117, 12, 87, 62, 37, 112, 7, 82, 57, 32, 107, 22, 97,
+		72, 47, 122, 1, 76, 51, 26, 101, 16, 91, 66, 41, 116, 11, 86, 61, 36, 111, 6, 81, 56, 31, 106, 21, 96, 71, 46,
+		121, 4, 79, 54, 29, 104, 19, 94, 69, 44, 119, 14, 89, 64, 39, 114, 9, 84, 59, 34, 109, 24, 99, 74, 49, 124 };
+
+	double Halton5(const unsigned Index)
+	{
+		return (
+			FaurePermutation[Index % 125u] * 1953125u + 
+			FaurePermutation[(Index / 125u) % 125u] * 15625u +
+			FaurePermutation[(Index / 15625u) % 125u] * 125u +
+			FaurePermutation[(Index / 1953125u) % 125u]) * (0.49999997 / 244140625u);
 	}
 }
 

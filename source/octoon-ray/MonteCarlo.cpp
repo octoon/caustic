@@ -26,8 +26,8 @@ namespace octoon
 
 	MonteCarlo::MonteCarlo() noexcept
 		: camera_(0.f, 1.f, 3.f, 1000.f)
-		, numBounces_(5)
-		, numSamples_(1)
+		, numBounces_(1)
+		, numSamples_(100)
 		, skyColor_(1.0f, 1.0f, 1.0f)
 		, light_(-0.01f, 1.9f, 0.1f)
 		, width_(0)
@@ -324,7 +324,7 @@ namespace octoon
 				colorAccum += albede[i] * PathTracing(position[i], rays[i].d, normals[i], normals_[i].w, position[i].w, seed, bounce) * (1.0f / numSamples_) * GetPhysicalLightAttenuation(position[i] - ro);
 		}
 
-		return colorAccum;
+		return colorAccum * (1.0f / numSamples_);
 	}
 
 	void 
@@ -373,7 +373,10 @@ namespace octoon
 			if (hits_[i] >= 0)
 			{
 				std::uint32_t bounce = 0;
-				hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame * i);
+				if (numSamples_)
+					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame * i, bounce);
+				else
+					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame * i);
 			}
 		}
 
