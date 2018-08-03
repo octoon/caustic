@@ -90,14 +90,14 @@ namespace octoon
 			if (devinfo.type == RadeonRays::DeviceInfo::kGpu)
 			{
 				deviceidx = idx;
-				break;
+				/*break;*/
 			}
 
-			if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
+			/*if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
 			{
 				deviceidx = idx;
 				break;
-			}
+			}*/
 		}
 
 		if (deviceidx == -1) return false;
