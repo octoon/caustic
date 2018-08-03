@@ -193,16 +193,18 @@ namespace octoon
 
 		for (std::int32_t i = 0; i < numBounces_; i++)
 		{
-			auto d = bsdf(rd, norm, roughness, ior, frame, numSamples_);
+			RadeonRays::float3 L = bsdf(rd, norm, roughness, ior, frame, numSamples_);
+			if (RadeonRays::dot(L, norm) <= 0.0f)
+				break;
 
 			api_->MapBuffer(this->ray_, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
-			rays[0].d = d;
-			rays[0].o = ro + rays[0].d * 1e-4f;
+			rays[0].d = L;
+			rays[0].o = ro + L * 1e-4f;
 			rays[0].SetMaxT(std::numeric_limits<float>::max());
 			rays[0].SetTime(0.0f);
 			rays[0].SetMask(-1);
 			rays[0].SetActive(true);
-			rays[0].SetDoBackfaceCulling(true);
+			rays[0].SetDoBackfaceCulling(ior > 1.0f ? false : true);
 
 			api_->UnmapBuffer(this->ray_, rays, &e); e->Wait(); api_->DeleteEvent(e);
 			api_->QueryIntersection(this->ray_, 1, this->hit_, nullptr, &e); e->Wait(); api_->DeleteEvent(e);
@@ -223,7 +225,7 @@ namespace octoon
 					auto albede = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 					auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit[0].primid, hit[0].uvwt);
 					norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit[0].primid, hit[0].uvwt);
-					rd = d;
+					rd = L;
 					ior = mat.dissolve;
 					roughness = mat.shininess;
 
@@ -373,9 +375,9 @@ namespace octoon
 			if (hits_[i] > 0)
 			{
 				std::uint32_t bounce = 0;
-				if (numSamples_)
+				/*/if (numSamples_)
 					hdr_[i] += albede_[i] * MultPathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, bounce);
-				else
+				else*/
 					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame);
 			}
 		}

@@ -99,7 +99,7 @@ namespace octoon
 			auto R = RadeonRays::normalize(reflect(V, N));
 			auto H = LobeDirection(R, i, samplesCount, roughness);
 			auto L = 2 * dot(V, H) * H - V;
-			L.w = SpecularBRDF_GGX(N, L, H, -V, roughness);
+			// L.w = SpecularBRDF_GGX(N, L, H, -V, roughness);
 
 			return L;
 		}
@@ -110,7 +110,7 @@ namespace octoon
 		}
 
 		auto L = CosineDirection(N, i, samplesCount);
-		L.w = DiffuseBRDF(N, L, -V, roughness);
+		// L.w = DiffuseBRDF(N, L, -V, roughness);
 
 		return L;
 	}
