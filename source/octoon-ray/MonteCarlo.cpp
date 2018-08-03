@@ -375,9 +375,9 @@ namespace octoon
 			if (hits_[i] > 0)
 			{
 				std::uint32_t bounce = 0;
-				/*/if (numSamples_)
+				if (numSamples_)
 					hdr_[i] += albede_[i] * MultPathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, bounce);
-				else*/
+				else
 					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame);
 			}
 		}
