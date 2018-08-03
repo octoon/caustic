@@ -35,7 +35,7 @@ namespace octoon
 		bool init_RadeonRays_Scene();
 
 	private:
-		RadeonRays::float3 PathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::uint32_t seed, std::uint32_t bounce);
+		RadeonRays::float3 PathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& rd, const RadeonRays::float3& norm, float shininess, float ior, std::uint32_t seed, std::uint32_t bounce);
 
 	private:
 		std::uint32_t width_;
@@ -56,9 +56,10 @@ namespace octoon
 		std::vector<RadeonRays::float3> hdr_;
 
 		std::vector<std::uint8_t> hits_;
-		std::vector<RadeonRays::float3> albede_;
-		std::vector<RadeonRays::float3> normals_;
-		std::vector<RadeonRays::float3> position_;
+		std::vector<RadeonRays::ray> view_;
+		std::vector<RadeonRays::float4> albede_;
+		std::vector<RadeonRays::float4> normals_;
+		std::vector<RadeonRays::float4> position_;
 
 		std::vector<tinyobj::shape_t> g_objshapes;
 		std::vector<tinyobj::material_t> g_objmaterials;

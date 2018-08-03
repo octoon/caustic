@@ -26,8 +26,8 @@ namespace octoon
 
 	MonteCarlo::MonteCarlo() noexcept
 		: camera_(0.f, 1.f, 3.f, 1000.f)
-		, numBounces_(1)
-		, numSamples_(10)
+		, numBounces_(5)
+		, numSamples_(2)
 		, skyColor_(1.0f, 1.0f, 1.0f)
 		, light_(-0.01f, 1.9f, 0.1f)
 		, width_(0)
@@ -131,7 +131,9 @@ namespace octoon
 			}
 		}
 
-		this->ray_buffer_ = api_->CreateBuffer(sizeof(RadeonRays::ray) * numRays, rays.data());
+		view_ = std::move(rays);
+
+		this->ray_buffer_ = api_->CreateBuffer(sizeof(RadeonRays::ray) * numRays, view_.data());
 		this->isect_buffer_ = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numRays, nullptr);
 
 		return true;
@@ -179,7 +181,7 @@ namespace octoon
 	}
 
 	RadeonRays::float3
-	MonteCarlo::PathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& norm, std::uint32_t seed, std::uint32_t bounce)
+	MonteCarlo::PathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& rd, const RadeonRays::float3& norm, float shininess, float ior, std::uint32_t seed, std::uint32_t bounce)
 	{
 		if (bounce > this->numBounces_)
 			return RadeonRays::float3(0.0f, 0.0f, 0.0f);
@@ -199,17 +201,17 @@ namespace octoon
 #pragma omp parallel for
 		for (auto i = 0; i < numSamples_; i++)
 		{
-			RadeonRays::float3 rd = bsdf(norm, i, numSamples_, seed);
-			rd.normalize();
+			RadeonRays::float3 d = bsdf(rd, norm, shininess, ior, i, numSamples_, seed);
+			d.normalize();
 
 			auto& ray = rays[i];
-			ray.o = ro + rd * 1e-4f;
-			ray.d = rd;
+			ray.o = ro + d * 1e-4f;
+			ray.d = d;
 			ray.SetMaxT(std::numeric_limits<float>::max());
 			ray.SetTime(0.0f);
 			ray.SetMask(-1);
 			ray.SetActive(true);
-			ray.SetDoBackfaceCulling(true);
+			ray.SetDoBackfaceCulling(false);
 		}
 
 		api_->UnmapBuffer(spp_ray, rays, &e); e->Wait(); api_->DeleteEvent(e);
@@ -237,7 +239,9 @@ namespace octoon
 					inects[i] = true;
 					albede[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 					position[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+					position_[i].w = mat.dissolve;
 					normals[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+					normals_[i].w = mat.shininess;
 				}
 			}
 			else
@@ -254,7 +258,7 @@ namespace octoon
 		for (std::size_t i = 0; i < numSamples_; i++)
 		{
 			if (inects[i])
-				colorAccum += albede[i] * PathTracing(position[i], normals[i], seed, bounce) * (1.0f / numSamples_) * GetPhysicalLightAttenuation(position[i] - ro);
+				colorAccum += albede[i] * PathTracing(position[i], rays[i].d, normals[i], normals_[i].w, position[i].w, seed, bounce) * (1.0f / numSamples_) * GetPhysicalLightAttenuation(position[i] - ro);
 		}
 
 		return colorAccum;
@@ -290,7 +294,9 @@ namespace octoon
 			{
 				hits_[i] = true;
 				normals_[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+				normals_[i].w = mat.shininess;
 				position_[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
+				position_[i].w = mat.dissolve;
 				albede_[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
 			}
 		}
@@ -304,7 +310,7 @@ namespace octoon
 			if (hits_[i] >= 0)
 			{
 				std::uint32_t bounce = 0;
-				hdr_[i] += albede_[i] * PathTracing(position_[i], normals_[i], i * frame, bounce) * (1.0f / numSamples_);
+				hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, i * frame, bounce) * (1.0f / numSamples_);
 			}
 		}
 

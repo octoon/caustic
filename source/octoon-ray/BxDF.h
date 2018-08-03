@@ -11,6 +11,17 @@ namespace octoon
 		return I - 2 * (RadeonRays::dot(I, N) * N);
 	}
 
+	inline RadeonRays::float3 refract(const RadeonRays::float3& I, const RadeonRays::float3& normal, float refractRatio)
+	{
+		RadeonRays::float3 inVec = I;
+		inVec.normalize();
+		float dt = RadeonRays::dot(inVec, normal);
+		float s2 = 1.0 - dt * dt;
+		float st2 = refractRatio * refractRatio * s2;
+		float cost2 = 1 - st2;
+		return (inVec - normal * dt) * refractRatio - normal * sqrt(cost2);
+	}
+
 	float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
 	{
 		const float invRadius = 1.0f / radius;
@@ -41,9 +52,18 @@ namespace octoon
 		return H;
 	}
 
-	RadeonRays::float3 bsdf(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+	RadeonRays::float3 bsdf(const RadeonRays::float3& rd, const RadeonRays::float3& n, float shininess, float ior, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
 	{
-		return CosineDirection(n, hash(seed * 1.0f) + float(i) / samplesCount);
+		if (shininess > 0) 
+		{
+			if (shininess > hash(seed + float(i) / samplesCount) * 2049.0f)
+				return RadeonRays::normalize(reflect(rd, n));
+		}
+
+		if (ior > 1.0f)
+			return RadeonRays::normalize(refract(rd, n, ior));
+
+		return CosineDirection(n, hash(seed) + float(i) / samplesCount);
 	}
 }
 
