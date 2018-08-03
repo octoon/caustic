@@ -31,6 +31,54 @@ namespace octoon
 		return attenuation;
 	}
 
+	float SmithJointApprox(float a2, float NoV, float NoL)
+	{
+		float a = sqrt(a2);
+		float Vis_SmithV = NoL * (NoV * (1 - a) + a);
+		float Vis_SmithL = NoV * (NoL * (1 - a) + a);
+		return 0.5 * 1.0f / (Vis_SmithV + Vis_SmithL);
+	}
+
+	float DiffuseBRDF(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
+	{
+		float nl = RadeonRays::dot(L, N);
+		if (nl > 0)
+		{
+			auto H = RadeonRays::normalize(L + V);
+
+			float nh = RadeonRays::dot(H, N);
+			float vh = RadeonRays::dot(V, L);
+			float nv = RadeonRays::dot(V, N);
+
+			float FD90 = (0.5 + 2 * vh * vh) * roughness;
+			float FdV = 1 + (FD90 - 1) * std::pow(1 - nv, 5);
+			float FdL = 1 + (FD90 - 1) * std::pow(1 - nl, 5);
+
+			return std::max(0.0f, FdV * FdL * (1.0f - 0.3333f * roughness));
+		}
+
+		return 0;
+	}
+
+	float SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& H, const RadeonRays::float3& V, float roughness)
+	{
+		float nl = RadeonRays::dot(L, N);
+		if (nl > 0)
+		{
+			float nv = RadeonRays::dot(V, N);
+			float vh = RadeonRays::dot(V, L);
+			float nh = RadeonRays::dot(H, N);
+
+			float G = SmithJointApprox(std::pow(roughness, 4), nv, nl);
+			float Fc = std::pow(1 - vh, 5);
+			float F = (1 - Fc) + Fc;
+
+			return std::max(0.0f, nl * F * G * (4 * vh / nh));
+		}
+
+		return 0;
+	}
+
 	RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, std::uint32_t i, std::uint32_t samplesCount)
 	{
 		auto H = ImportanceSampleGGX(Hammersley(i, samplesCount), roughness);
@@ -39,24 +87,32 @@ namespace octoon
 
 	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount)
 	{
-		RadeonRays::float3 H = CosineSampleHemisphere(Hammersley(i, samplesCount));
+		static int seed = 0;
+		auto H = CosineSampleHemisphere(Hammersley(i, samplesCount, seed++));
 		return TangentToWorld(H, n);
 	}
 
-	RadeonRays::float3 bsdf(const RadeonRays::float3& rd, const RadeonRays::float3& n, float roughness, float ior, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
+	RadeonRays::float3 bsdf(const RadeonRays::float3& V, const RadeonRays::float3& N, float roughness, float ior, std::uint32_t i, std::uint32_t samplesCount)
 	{
-		if (roughness > 0)
+		if (roughness < 1.0f)
 		{
-			auto R = RadeonRays::normalize(reflect(rd, n));
-			return LobeDirection(R, i, samplesCount, roughness);
+			auto R = RadeonRays::normalize(reflect(V, N));
+			auto H = LobeDirection(R, i, samplesCount, roughness);
+			auto L = 2 * dot(V, H) * H - V;
+			L.w = SpecularBRDF_GGX(N, L, H, -V, roughness);
+
+			return L;
 		}
 
 		if (ior > 1.0f)
 		{
-			return RadeonRays::normalize(refract(rd, n, ior));
+			return RadeonRays::normalize(refract(V, N, ior));
 		}
 
-		return CosineDirection(n, i, samplesCount);
+		auto L = CosineDirection(N, i, samplesCount);
+		L.w = DiffuseBRDF(N, L, -V, roughness);
+
+		return L;
 	}
 }
 

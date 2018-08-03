@@ -33,7 +33,7 @@ namespace octoon
 	{
 		float Phi = 2 * PI * Xi.x;
 		float CosTheta = 1 - 2 * Xi.y;
-		float SinTheta = sqrt(1 - CosTheta * CosTheta);
+		float SinTheta = std::sqrt(1 - CosTheta * CosTheta);
 
 		RadeonRays::float4 H;
 		H.x = SinTheta * cos(Phi);
@@ -94,36 +94,11 @@ namespace octoon
 		return CosineSampleHemisphere(RadeonRays::float2(Xi.x, u));
 	}
 
-	inline RadeonRays::float3 HammersleySampleLambert(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount, std::uint32_t seed)
-	{
-		auto H = CosineSampleHemisphere(Hammersley(i, samplesCount, seed));
-		H.z = H.z * 2.0f - 1.0f;
-		H += n;
-		H.normalize();
-
-		return H;
-	}
-
 	inline RadeonRays::float3 TangentToWorld(const RadeonRays::float3& H, const RadeonRays::float3& N)
 	{
 		RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0, 0, 1) : RadeonRays::float3(1, 0, 0);
 		RadeonRays::float3 X = RadeonRays::normalize(RadeonRays::cross(Y, N));
 		return X * H.x + cross(N, X) * H.y + N * H.z;
-	}
-
-	static const unsigned short FaurePermutation[5 * 5 * 5] = { 0, 75, 50, 25, 100, 15, 90, 65, 40, 115, 10, 85, 60, 35, 110, 5, 80, 55,
-		30, 105, 20, 95, 70, 45, 120, 3, 78, 53, 28, 103, 18, 93, 68, 43, 118, 13, 88, 63, 38, 113, 8, 83, 58, 33, 108,
-		23, 98, 73, 48, 123, 2, 77, 52, 27, 102, 17, 92, 67, 42, 117, 12, 87, 62, 37, 112, 7, 82, 57, 32, 107, 22, 97,
-		72, 47, 122, 1, 76, 51, 26, 101, 16, 91, 66, 41, 116, 11, 86, 61, 36, 111, 6, 81, 56, 31, 106, 21, 96, 71, 46,
-		121, 4, 79, 54, 29, 104, 19, 94, 69, 44, 119, 14, 89, 64, 39, 114, 9, 84, 59, 34, 109, 24, 99, 74, 49, 124 };
-
-	double Halton5(const unsigned Index)
-	{
-		return (
-			FaurePermutation[Index % 125u] * 1953125u + 
-			FaurePermutation[(Index / 125u) % 125u] * 15625u +
-			FaurePermutation[(Index / 15625u) % 125u] * 125u +
-			FaurePermutation[(Index / 1953125u) % 125u]) * (0.49999997 / 244140625u);
 	}
 }
 

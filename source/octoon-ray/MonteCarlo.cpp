@@ -183,7 +183,7 @@ namespace octoon
 	}
 
 	RadeonRays::float3
-	MonteCarlo::PathTracing(RadeonRays::float3 ro, RadeonRays::float3 rd, RadeonRays::float3 norm, float shininess, float ior, std::uint32_t seed)
+	MonteCarlo::PathTracing(RadeonRays::float3 ro, RadeonRays::float3 rd, RadeonRays::float3 norm, float roughness, float ior, std::uint32_t frame)
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
@@ -193,7 +193,7 @@ namespace octoon
 
 		for (std::int32_t i = 0; i < numBounces_; i++)
 		{
-			auto d = bsdf(rd, norm, shininess, ior, i, numBounces_, seed);
+			auto d = bsdf(rd, norm, roughness, ior, frame, numSamples_);
 
 			api_->MapBuffer(this->ray_, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 			rays[0].d = d;
@@ -225,7 +225,7 @@ namespace octoon
 					norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit[0].primid, hit[0].uvwt);
 					rd = d;
 					ior = mat.dissolve;
-					shininess = mat.shininess;
+					roughness = mat.shininess;
 
 					colorAccum *= albede * GetPhysicalLightAttenuation(ro - p);
 
@@ -245,7 +245,7 @@ namespace octoon
 	}
 
 	RadeonRays::float3
-	MonteCarlo::PathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& rd, const RadeonRays::float3& norm, float shininess, float ior, std::uint32_t seed, std::uint32_t bounce)
+	MonteCarlo::MultPathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& rd, const RadeonRays::float3& norm, float roughness, float ior, std::uint32_t bounce)
 	{
 		if (bounce > this->numBounces_)
 			return RadeonRays::float3(0.0f, 0.0f, 0.0f);
@@ -265,11 +265,11 @@ namespace octoon
 #pragma omp parallel for
 		for (auto i = 0; i < numSamples_; i++)
 		{
-			RadeonRays::float3 d = bsdf(rd, norm, shininess, ior, i, numSamples_, seed);
+			RadeonRays::float3 L = bsdf(rd, norm, roughness, ior, i, numSamples_);
 
 			auto& ray = rays[i];
-			ray.o = ro + d * 1e-4f;
-			ray.d = d;
+			ray.o = ro + L * 1e-4f;
+			ray.d = L;
 			ray.SetMaxT(std::numeric_limits<float>::max());
 			ray.SetTime(0.0f);
 			ray.SetMask(-1);
@@ -321,7 +321,7 @@ namespace octoon
 		for (std::size_t i = 0; i < numSamples_; i++)
 		{
 			if (inects[i])
-				colorAccum += albede[i] * PathTracing(position[i], rays[i].d, normals[i], normals_[i].w, position[i].w, seed, bounce) * (1.0f / numSamples_) * GetPhysicalLightAttenuation(position[i] - ro);
+				colorAccum += albede[i] * MultPathTracing(position[i], rays[i].d, normals[i], normals_[i].w, position[i].w, bounce) * (1.0f / numSamples_) * GetPhysicalLightAttenuation(position[i] - ro);
 		}
 
 		return colorAccum * (1.0f / numSamples_);
@@ -370,13 +370,13 @@ namespace octoon
 	{
 		for (std::uint32_t i = y * this->width_; i < y * this->width_ + this->width_; ++i)
 		{
-			if (hits_[i] >= 0)
+			if (hits_[i] > 0)
 			{
 				std::uint32_t bounce = 0;
 				if (numSamples_)
-					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame * i, bounce);
+					hdr_[i] += albede_[i] * MultPathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, bounce);
 				else
-					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame * i);
+					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame);
 			}
 		}
 
