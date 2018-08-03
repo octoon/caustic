@@ -7,6 +7,11 @@ SET(OCTOON_RAY_LIST
 	${SOURCE_PATH}/main.cpp
 	${SOURCE_PATH}/tiny_obj_loader.cpp
 	${SOURCE_PATH}/tiny_obj_loader.h
+	${SOURCE_PATH}/Hammersley.h
+	${SOURCE_PATH}/MonteCarlo.h
+	${SOURCE_PATH}/MonteCarlo.cpp
+	${SOURCE_PATH}/MonteCarloThread.h
+	${SOURCE_PATH}/MonteCarloThread.cpp
 )
 SOURCE_GROUP("octoon-ray" FILES ${OCTOON_RAY_LIST})
 
