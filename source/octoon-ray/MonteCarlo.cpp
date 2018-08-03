@@ -27,7 +27,7 @@ namespace octoon
 	MonteCarlo::MonteCarlo() noexcept
 		: camera_(0.f, 1.f, 3.f, 1000.f)
 		, numBounces_(5)
-		, numSamples_(2)
+		, numSamples_(1)
 		, skyColor_(1.0f, 1.0f, 1.0f)
 		, light_(-0.01f, 1.9f, 0.1f)
 		, width_(0)
@@ -133,6 +133,8 @@ namespace octoon
 
 		view_ = std::move(rays);
 
+		this->ray_ = api_->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
+		this->hit_ = api_->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
 		this->ray_buffer_ = api_->CreateBuffer(sizeof(RadeonRays::ray) * numRays, view_.data());
 		this->isect_buffer_ = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numRays, nullptr);
 
@@ -178,6 +180,68 @@ namespace octoon
 	MonteCarlo::raw_data(std::uint32_t y) const noexcept
 	{
 		return &ldr_[y * this->width_];
+	}
+
+	RadeonRays::float3
+	MonteCarlo::PathTracing(RadeonRays::float3 ro, RadeonRays::float3 rd, RadeonRays::float3 norm, float shininess, float ior, std::uint32_t seed)
+	{
+		RadeonRays::ray* rays = nullptr;
+		RadeonRays::Event* e = nullptr;
+		RadeonRays::Intersection* hit = nullptr;
+		RadeonRays::float3 colorAccum(1.0f, 1.0f, 1.0f);
+		RadeonRays::float3 finalColor(0.0f, 0.0f, 0.0f);
+
+		for (std::int32_t i = 0; i < numBounces_; i++)
+		{
+			auto d = bsdf(rd, norm, shininess, ior, i, numBounces_, seed);
+
+			api_->MapBuffer(this->ray_, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
+			rays[0].d = d;
+			rays[0].o = ro + rays[0].d * 1e-4f;
+			rays[0].SetMaxT(std::numeric_limits<float>::max());
+			rays[0].SetTime(0.0f);
+			rays[0].SetMask(-1);
+			rays[0].SetActive(true);
+			rays[0].SetDoBackfaceCulling(true);
+
+			api_->UnmapBuffer(this->ray_, rays, &e); e->Wait(); api_->DeleteEvent(e);
+			api_->QueryIntersection(this->ray_, 1, this->hit_, nullptr, &e); e->Wait(); api_->DeleteEvent(e);
+			api_->MapBuffer(this->hit_, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
+
+			if (hit[0].shapeid != RadeonRays::kNullId && hit[0].primid != RadeonRays::kNullId)
+			{
+				tinyobj::mesh_t& mesh = g_objshapes[hit[0].shapeid].mesh;
+				tinyobj::material_t& mat = g_objmaterials[mesh.material_ids[hit[0].primid]];
+
+				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+				{
+					finalColor = colorAccum * RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+					break;
+				}
+				else
+				{
+					auto albede = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+					auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit[0].primid, hit[0].uvwt);
+					norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit[0].primid, hit[0].uvwt);
+					rd = d;
+					ior = mat.dissolve;
+					shininess = mat.shininess;
+
+					colorAccum *= albede * GetPhysicalLightAttenuation(ro - p);
+
+					ro = p;
+				}
+			}
+			else
+			{
+				finalColor = colorAccum * skyColor_;
+				break;
+			}
+			
+			api_->UnmapBuffer(this->hit_, hit, nullptr);
+		}
+
+		return finalColor;
 	}
 
 	RadeonRays::float3
@@ -309,7 +373,7 @@ namespace octoon
 			if (hits_[i] >= 0)
 			{
 				std::uint32_t bounce = 0;
-				hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, i * frame, bounce) * (1.0f / numSamples_);
+				hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame * i);
 			}
 		}
 

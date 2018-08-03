@@ -35,6 +35,7 @@ namespace octoon
 		bool init_RadeonRays_Scene();
 
 	private:
+		RadeonRays::float3 PathTracing(RadeonRays::float3 ro, RadeonRays::float3 rd, RadeonRays::float3 norm, float shininess, float ior, std::uint32_t seed);
 		RadeonRays::float3 PathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& rd, const RadeonRays::float3& norm, float shininess, float ior, std::uint32_t seed, std::uint32_t bounce);
 
 	private:
@@ -45,6 +46,8 @@ namespace octoon
 		std::uint32_t numSamples_;
 
 		RadeonRays::IntersectionApi* api_;
+		RadeonRays::Buffer* ray_;
+		RadeonRays::Buffer* hit_;
 		RadeonRays::Buffer* ray_buffer_;
 		RadeonRays::Buffer* isect_buffer_;
 
