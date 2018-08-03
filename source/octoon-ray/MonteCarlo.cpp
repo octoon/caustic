@@ -202,7 +202,6 @@ namespace octoon
 		for (auto i = 0; i < numSamples_; i++)
 		{
 			RadeonRays::float3 d = bsdf(rd, norm, shininess, ior, i, numSamples_, seed);
-			d.normalize();
 
 			auto& ray = rays[i];
 			ray.o = ro + d * 1e-4f;
