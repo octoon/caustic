@@ -13,13 +13,11 @@ namespace octoon
 
 	inline RadeonRays::float3 refract(const RadeonRays::float3& I, const RadeonRays::float3& normal, float refractRatio)
 	{
-		RadeonRays::float3 inVec = I;
-		inVec.normalize();
-		float dt = RadeonRays::dot(inVec, normal);
+		float dt = RadeonRays::dot(I, normal);
 		float s2 = 1.0 - dt * dt;
 		float st2 = refractRatio * refractRatio * s2;
 		float cost2 = 1 - st2;
-		return (inVec - normal * dt) * refractRatio - normal * std::sqrt(cost2);
+		return (I - normal * dt) * refractRatio - normal * std::sqrt(cost2);
 	}
 
 	float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
