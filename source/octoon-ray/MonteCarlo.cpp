@@ -249,7 +249,7 @@ namespace octoon
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
 			auto index = tile * this->width_ + i;
-			auto& hit = isect[index];
+			auto& hit = isect[index + i];
 			int shape_id = hit.shapeid;
 			int prim_id = hit.primid;
 
@@ -261,18 +261,18 @@ namespace octoon
 
 			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 			{
-				accum_[index].x = mat.emission[0];
-				accum_[index].y = mat.emission[1];
-				accum_[index].z = mat.emission[2];
+				accum_[index + i].x = mat.emission[0];
+				accum_[index + i].y = mat.emission[1];
+				accum_[index + i].z = mat.emission[2];
 			}
 			else
 			{
-				accum_[index].x = mat.diffuse[0];
-				accum_[index].y = mat.diffuse[1];
-				accum_[index].z = mat.diffuse[2];
+				accum_[index + i].x = mat.diffuse[0];
+				accum_[index + i].y = mat.diffuse[1];
+				accum_[index + i].z = mat.diffuse[2];
 			}
 
-			renderData_.rays[i] = view_[index];
+			renderData_.rays[i] = view_[index + i];
 			renderData_.normals_[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 			renderData_.position_[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 		}
@@ -289,12 +289,6 @@ namespace octoon
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
 			auto index = tile * this->width_ + i;
-			if (pass + 1 >= numBounces_)
-			{
-				accum_[index] *= 0.0f;
-				break;
-			}
-
 			auto& hit = renderData_.hits[i];
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
@@ -307,9 +301,14 @@ namespace octoon
 				}
 				else
 				{
-					accum_[index].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
-					accum_[index].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
-					accum_[index].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
+					if (pass + 1 >= numBounces_)
+						accum_[index] *= 0.0f;
+					else
+					{
+						accum_[index].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
+						accum_[index].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
+						accum_[index].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
+					}
 				}
 			}
 			else
@@ -365,11 +364,6 @@ namespace octoon
 			this->GatherEnergy(pass, tile);
 			this->GenerateRays(frame);
 		}
-	}
-
-	void
-	MonteCarlo::AdaptiveSampling() noexcept
-	{
 	}
 
 	void
