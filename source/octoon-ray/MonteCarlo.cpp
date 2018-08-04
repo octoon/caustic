@@ -26,8 +26,8 @@ namespace octoon
 
 	MonteCarlo::MonteCarlo() noexcept
 		: camera_(0.f, 1.f, 3.f, 1000.f)
-		, numBounces_(1)
-		, numSamples_(100)
+		, numBounces_(5)
+		, numSamples_(1000)
 		, skyColor_(1.0f, 1.0f, 1.0f)
 		, light_(-0.01f, 1.9f, 0.1f)
 		, width_(0)
@@ -60,23 +60,19 @@ namespace octoon
 		if (!init_RadeonRays_Camera()) throw std::runtime_error("init_RadeonRays_Camera() fail");
 	}
 
-	bool 
+	bool
 	MonteCarlo::init_Gbuffers(std::uint32_t, std::uint32_t h) noexcept
 	{
 		auto allocSize = width_ * height_;
 
 		ldr_.resize(allocSize);
 		hdr_.resize(allocSize);
-
-		hits_.resize(allocSize);
-		albede_.resize(allocSize);
-		normals_.resize(allocSize);
-		position_.resize(allocSize);
+		accum_.resize(allocSize);
 
 		return true;
 	}
 
-	bool 
+	bool
 	MonteCarlo::init_RadeonRays() noexcept
 	{
 		RadeonRays::IntersectionApi::SetPlatform(RadeonRays::DeviceInfo::kAny);
@@ -103,6 +99,11 @@ namespace octoon
 		if (deviceidx == -1) return false;
 
 		this->api_ = RadeonRays::IntersectionApi::Create(deviceidx);
+
+		renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * this->width_, nullptr);
+		renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
+		renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
+
 		return true;
 	}
 
@@ -133,30 +134,30 @@ namespace octoon
 
 		view_ = std::move(rays);
 
-		this->ray_ = api_->CreateBuffer(sizeof(RadeonRays::ray), nullptr);
-		this->hit_ = api_->CreateBuffer(sizeof(RadeonRays::Intersection), nullptr);
 		this->ray_buffer_ = api_->CreateBuffer(sizeof(RadeonRays::ray) * numRays, view_.data());
 		this->isect_buffer_ = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numRays, nullptr);
+
+		api_->QueryIntersection(ray_buffer_, this->width_ * this->height_, this->isect_buffer_, nullptr, nullptr);
 
 		return true;
 	}
 
-	bool 
+	bool
 	MonteCarlo::init_data()
 	{
 		std::string basepath = "../Resources/CornellBox/";
 		std::string filename = basepath + "orig.objm";
-		std::string res = LoadObj(g_objshapes, g_objmaterials, filename.c_str(), basepath.c_str());
+		std::string res = LoadObj(scene_, materials_, filename.c_str(), basepath.c_str());
 
 		return res != "" ? false : true;
 	}
 
-	bool 
+	bool
 	MonteCarlo::init_RadeonRays_Scene()
 	{
-		for (int id = 0; id < this->g_objshapes.size(); ++id)
+		for (int id = 0; id < this->scene_.size(); ++id)
 		{
-			tinyobj::shape_t& objshape = this->g_objshapes[id];
+			tinyobj::shape_t& objshape = this->scene_[id];
 
 			float* vertdata = objshape.mesh.positions.data();
 			int nvert = objshape.mesh.positions.size();
@@ -182,204 +183,178 @@ namespace octoon
 		return &ldr_[y * this->width_];
 	}
 
-	RadeonRays::float3
-	MonteCarlo::PathTracing(RadeonRays::float3 ro, RadeonRays::float3 rd, RadeonRays::float3 norm, float roughness, float ior, std::uint32_t frame)
+	void
+	MonteCarlo::GenerateRays(std::uint32_t frame, std::uint32_t y)
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
-		RadeonRays::Intersection* hit = nullptr;
-		RadeonRays::float3 colorAccum(1.0f, 1.0f, 1.0f);
-		RadeonRays::float3 finalColor(0.0f, 0.0f, 0.0f);
+		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->width_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
-		for (std::int32_t i = 0; i < numBounces_; i++)
-		{
-			RadeonRays::float3 L = bsdf(rd, norm, roughness, ior, frame, numSamples_);
-			if (RadeonRays::dot(L, norm) <= 0.0f)
-				break;
-
-			api_->MapBuffer(this->ray_, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray), (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
-			rays[0].d = L;
-			rays[0].o = ro + L * 1e-4f;
-			rays[0].SetMaxT(std::numeric_limits<float>::max());
-			rays[0].SetTime(0.0f);
-			rays[0].SetMask(-1);
-			rays[0].SetActive(true);
-			rays[0].SetDoBackfaceCulling(ior > 1.0f ? false : true);
-
-			api_->UnmapBuffer(this->ray_, rays, &e); e->Wait(); api_->DeleteEvent(e);
-			api_->QueryIntersection(this->ray_, 1, this->hit_, nullptr, &e); e->Wait(); api_->DeleteEvent(e);
-			api_->MapBuffer(this->hit_, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection), (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
-
-			if (hit[0].shapeid != RadeonRays::kNullId && hit[0].primid != RadeonRays::kNullId)
-			{
-				tinyobj::mesh_t& mesh = g_objshapes[hit[0].shapeid].mesh;
-				tinyobj::material_t& mat = g_objmaterials[mesh.material_ids[hit[0].primid]];
-
-				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
-				{
-					finalColor = colorAccum * RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
-					break;
-				}
-				else
-				{
-					auto albede = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-					auto p = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit[0].primid, hit[0].uvwt);
-					norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit[0].primid, hit[0].uvwt);
-					rd = L;
-					ior = mat.dissolve;
-					roughness = mat.shininess;
-
-					colorAccum *= albede * GetPhysicalLightAttenuation(ro - p);
-
-					ro = p;
-				}
-			}
-			else
-			{
-				finalColor = colorAccum * skyColor_;
-				break;
-			}
-			
-			api_->UnmapBuffer(this->hit_, hit, nullptr);
-		}
-
-		return finalColor;
-	}
-
-	RadeonRays::float3
-	MonteCarlo::MultPathTracing(const RadeonRays::float3& ro, const RadeonRays::float3& rd, const RadeonRays::float3& norm, float roughness, float ior, std::uint32_t bounce)
-	{
-		if (bounce > this->numBounces_)
-			return RadeonRays::float3(0.0f, 0.0f, 0.0f);
-
-		bounce++;
-
-		RadeonRays::ray* rays = nullptr;
-		RadeonRays::Event* e = nullptr;
-		RadeonRays::Intersection* hits = nullptr;
-		RadeonRays::float3 colorAccum(0.0f, 0.0f, 0.0f);
-
-		auto spp_ray = api_->CreateBuffer(sizeof(RadeonRays::ray) * numSamples_, nullptr);
-		auto spp_hit = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numSamples_, nullptr);
-
-		api_->MapBuffer(spp_ray, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * numSamples_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
+		renderData_.rays.resize(this->width_);
 
 #pragma omp parallel for
-		for (auto i = 0; i < numSamples_; i++)
+		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			RadeonRays::float3 L = bsdf(rd, norm, roughness, ior, i, numSamples_);
-
-			auto& ray = rays[i];
-			ray.o = ro + L * 1e-4f;
-			ray.d = L;
-			ray.SetMaxT(std::numeric_limits<float>::max());
-			ray.SetTime(0.0f);
-			ray.SetMask(-1);
-			ray.SetActive(true);
-			ray.SetDoBackfaceCulling(ior > 1.0f ? false : true);
-		}
-
-		api_->UnmapBuffer(spp_ray, rays, &e); e->Wait(); api_->DeleteEvent(e);
-		api_->QueryIntersection(spp_ray, numSamples_, spp_hit, nullptr, &e); e->Wait(); api_->DeleteEvent(e);
-		api_->MapBuffer(spp_hit, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * numSamples_, (void**)&hits, &e); e->Wait(); api_->DeleteEvent(e);
-
-		std::vector<std::uint8_t> inects(numSamples_, false);
-		std::vector<RadeonRays::float3> albede(numSamples_);
-		std::vector<RadeonRays::float3> normals(numSamples_);
-		std::vector<RadeonRays::float3> position(numSamples_);
-
-#pragma omp parallel for
-		for (std::int32_t i = 0; i < numSamples_; i++)
-		{
-			auto& hit = hits[i];
+			auto& hit = renderData_.hits[i];
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
-				tinyobj::mesh_t& mesh = g_objshapes[hit.shapeid].mesh;
-				tinyobj::material_t& mat = g_objmaterials[mesh.material_ids[hit.primid]];
+				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
+				tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
 
-				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
-					colorAccum += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+				if (mat.emission[0] == 0.0f && mat.emission[1] == 0.0f && mat.emission[2] == 0.0f)
+				{
+					auto ior = mat.dissolve;
+					auto roughness = mat.shininess;
+
+					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, renderData_.normals_[i], roughness, ior, frame, numSamples_);
+					renderData_.rays[i].d = L;
+					renderData_.rays[i].o = renderData_.position_[i] + L * 1e-4f;
+					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
+					renderData_.rays[i].SetTime(0.0f);
+					renderData_.rays[i].SetMask(-1);
+					renderData_.rays[i].SetActive(RadeonRays::dot(renderData_.normals_[i], L) > 0.0 ? true : false);
+					renderData_.rays[i].SetDoBackfaceCulling(ior > 1.0f ? false : true);
+
+					renderData_.position_[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+					renderData_.normals_[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+				}
 				else
 				{
-					inects[i] = true;
-					albede[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-					position[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-					position_[i].w = mat.dissolve;
-					normals[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-					normals_[i].w = mat.shininess;
+					renderData_.rays[i].SetActive(false);
 				}
 			}
 			else
 			{
-				colorAccum += skyColor_;
+				renderData_.rays[i].SetActive(false);
 			}
 		}
 
-		api_->UnmapBuffer(spp_hit, hits, nullptr);
+		std::memcpy(rays, renderData_.rays.data(), sizeof(RadeonRays::ray) * renderData_.rays.size());
 
-		api_->DeleteBuffer(spp_ray);
-		api_->DeleteBuffer(spp_hit);
-
-		for (std::size_t i = 0; i < numSamples_; i++)
-		{
-			if (inects[i])
-				colorAccum += albede[i] * MultPathTracing(position[i], rays[i].d, normals[i], normals_[i].w, position[i].w, bounce) * (1.0f / numSamples_) * GetPhysicalLightAttenuation(position[i] - ro);
-		}
-
-		return colorAccum * (1.0f / numSamples_);
+		api_->UnmapBuffer(renderData_.fr_rays, rays, &e); e->Wait(); api_->DeleteEvent(e);
 	}
 
-	void 
-	MonteCarlo::query() noexcept
+	void
+	MonteCarlo::GenerateIntersection(std::uint32_t frame, std::uint32_t y) noexcept
 	{
 		RadeonRays::Event* e = nullptr;
 		RadeonRays::Intersection* isect = nullptr;
 
-		api_->QueryIntersection(ray_buffer_, this->width_ * this->height_, this->isect_buffer_, nullptr, nullptr);
-		api_->MapBuffer(this->isect_buffer_, RadeonRays::kMapRead, 0, this->width_ * this->height_ * sizeof(RadeonRays::Intersection), (void**)&isect, &e); e->Wait(); api_->DeleteEvent(e);
+		api_->MapBuffer(this->isect_buffer_, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->width_ * this->height_, (void**)&isect, &e); e->Wait(); api_->DeleteEvent(e);
+
+		renderData_.hits.resize(this->width_);
+		renderData_.normals_.resize(this->width_);
+		renderData_.position_.resize(this->width_);
 
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->width_ * this->height_; ++i)
+		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			int shape_id = isect[i].shapeid;
-			int prim_id = isect[i].primid;
+			auto index = y * this->width_;
+			auto& hit = isect[index + i];
+			int shape_id = hit.shapeid;
+			int prim_id = hit.primid;
 
 			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
 				continue;
 
-			tinyobj::mesh_t& mesh = g_objshapes[shape_id].mesh;
-			tinyobj::material_t& mat = g_objmaterials[mesh.material_ids[prim_id]];
+			tinyobj::mesh_t& mesh = scene_[shape_id].mesh;
+			tinyobj::material_t& mat = materials_[mesh.material_ids[prim_id]];
 
 			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 			{
-				hits_[i] = false;
-				hdr_[i] += RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+				accum_[index + i].x = mat.emission[0];
+				accum_[index + i].y = mat.emission[1];
+				accum_[index + i].z = mat.emission[2];
 			}
 			else
 			{
-				hits_[i] = true;
-				normals_[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-				normals_[i].w = mat.shininess;
-				position_[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-				position_[i].w = mat.dissolve;
-				albede_[i] = RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+				accum_[index + i].x = mat.diffuse[0];
+				accum_[index + i].y = mat.diffuse[1];
+				accum_[index + i].z = mat.diffuse[2];
 			}
+
+			renderData_.rays[i] = view_[index + i];
+			renderData_.normals_[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+			renderData_.position_[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+		}
+
+		std::memcpy(renderData_.hits.data(), &isect[y * this->width_], sizeof(RadeonRays::Intersection) * this->width_);
+
+		api_->UnmapBuffer(this->isect_buffer_, isect, &e); e->Wait(); api_->DeleteEvent(e);
+	}
+
+	void
+	MonteCarlo::Estimate(std::uint32_t frame, std::uint32_t y)
+	{
+		RadeonRays::Event* e = nullptr;
+		RadeonRays::Intersection* hit = nullptr;
+
+		for (std::int32_t pass = 0; pass < numBounces_; pass++)
+		{
+			api_->QueryIntersection(
+				renderData_.fr_rays,
+				renderData_.rays.size(),
+				renderData_.fr_hits,
+				nullptr,
+				nullptr);
+
+			api_->MapBuffer(renderData_.fr_hits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->width_, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
+
+			std::memcpy(renderData_.hits.data(), hit, sizeof(RadeonRays::Intersection) * this->width_);
+
+			api_->UnmapBuffer(renderData_.fr_hits, hit, &e); e->Wait(); api_->DeleteEvent(e);
+
+#pragma omp parallel for
+			for (std::int32_t i = 0; i < this->width_; ++i)
+			{
+				auto index = y * this->width_;
+				auto& hit = renderData_.hits[i];
+				if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
+				{
+					tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
+					tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
+
+					if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+					{
+						accum_[index + i] *= RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+					}
+					else
+					{
+						if (pass + 1 >= numBounces_)
+						{
+							accum_[index + i] *= 0.0f;
+						}
+						else
+						{
+							accum_[index + i].x *= mat.diffuse[0] * renderData_.rays[i].d.w;
+							accum_[index + i].y *= mat.diffuse[1] * renderData_.rays[i].d.w;
+							accum_[index + i].z *= mat.diffuse[2] * renderData_.rays[i].d.w;
+						}
+					}
+				}
+				else
+				{
+					accum_[index + i] *= skyColor_;
+				}
+			}
+
+			this->GenerateRays(frame, y);
 		}
 	}
 
 	void
 	MonteCarlo::render(std::uint32_t y, std::uint32_t frame) noexcept
 	{
-		for (std::uint32_t i = y * this->width_; i < y * this->width_ + this->width_; ++i)
+		this->GenerateIntersection(frame, y);
+		this->GenerateRays(frame, y);
+		this->Estimate(frame, y);
+
+#pragma omp parallel for
+		for (std::int32_t i = y * this->width_; i < y * this->width_ + this->width_; ++i)
 		{
-			if (hits_[i] > 0)
-			{
-				std::uint32_t bounce = 0;
-				if (numSamples_)
-					hdr_[i] += albede_[i] * MultPathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, bounce);
-				else
-					hdr_[i] += albede_[i] * PathTracing(position_[i], view_[i].d, normals_[i], normals_[i].w, position_[i].w, frame);
-			}
+			hdr_[i].x += accum_[i].x;
+			hdr_[i].y += accum_[i].y;
+			hdr_[i].z += accum_[i].z;
 		}
 
 #pragma omp parallel for

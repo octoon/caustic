@@ -60,11 +60,13 @@ namespace octoon
 		return 0;
 	}
 
-	float SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& H, const RadeonRays::float3& V, float roughness)
+	float SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
 	{
 		float nl = RadeonRays::dot(L, N);
 		if (nl > 0)
 		{
+			auto H = RadeonRays::normalize(L + V);
+
 			float nv = RadeonRays::dot(V, N);
 			float vh = RadeonRays::dot(V, L);
 			float nh = RadeonRays::dot(H, N);
@@ -85,10 +87,28 @@ namespace octoon
 		return TangentToWorld(H, n);
 	}
 
+	float rand()
+	{
+		static float seed = 0.0;
+		auto hash = (std::sin(seed++) * 43758.5453123);
+		return hash - std::floor(hash);
+	}
+
+	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n)
+	{
+		float u = rand();
+		float v = rand();
+
+		float a = 6.2831853f * v;
+		u = 2. * u - 1.;
+		float sinTheta = std::sqrt(1. - u * u);
+
+		return RadeonRays::normalize(n + RadeonRays::float3(cos(a) * sinTheta, sin(a) * sinTheta, u));
+	}
+
 	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount)
 	{
-		static int seed = 0;
-		auto H = CosineSampleHemisphere(Hammersley(i, samplesCount, seed++));
+		auto H = CosineSampleHemisphere(Hammersley(i, samplesCount));
 		return TangentToWorld(H, n);
 	}
 
@@ -97,9 +117,8 @@ namespace octoon
 		if (roughness < 1.0f)
 		{
 			auto R = RadeonRays::normalize(reflect(V, N));
-			auto H = LobeDirection(R, i, samplesCount, roughness);
-			auto L = 2 * dot(V, H) * H - V;
-			// L.w = SpecularBRDF_GGX(N, L, H, -V, roughness);
+			auto L = LobeDirection(R, roughness, i, samplesCount);
+			L.w = SpecularBRDF_GGX(N, L, -V, roughness);
 
 			return L;
 		}
@@ -109,8 +128,8 @@ namespace octoon
 			return RadeonRays::normalize(refract(V, N, ior));
 		}
 
-		auto L = CosineDirection(N, i, samplesCount);
-		// L.w = DiffuseBRDF(N, L, -V, roughness);
+		auto L = CosineDirection(N);
+		L.w = DiffuseBRDF(N, L, -V, roughness);
 
 		return L;
 	}

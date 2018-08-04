@@ -34,11 +34,11 @@ namespace octoon
 		std::packaged_task<std::uint32_t()> task([=]() {  pipeline_->render(y, frame); return y; });
 
 		auto f = task.get_future();
-		
+
 		lock_.lock();
 		task_.push(std::move(task));
 		lock_.unlock();
-		
+
 		return std::move(f);
 	}
 
@@ -46,7 +46,6 @@ namespace octoon
 	MonteCarloThread::thread() noexcept
 	{
 		pipeline_ = std::make_unique<octoon::MonteCarlo>(width_, height_);
-		pipeline_->query();
 
 		while (!isQuitRequest_)
 		{

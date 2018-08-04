@@ -54,8 +54,8 @@ void dumpTGA(const char* filepath, std::uint8_t pixesl[], std::uint32_t width, s
 
 int main(int argc, const char* argv[])
 {
-	auto width = 640;
-	auto height = 480;
+	auto width = 1920;
+	auto height = 1080;
 
 	if (::glfwInit() == GL_FALSE)
 		return 0;
@@ -94,8 +94,9 @@ int main(int argc, const char* argv[])
 				auto y = it.get();
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width, 1, GL_RGBA, GL_UNSIGNED_BYTE, engine.raw_data(y));
 
-				glfwGetWindowSize(window, &width, &height);
-				glViewport(0, 0, width, height);
+				int w = 0, h = 0;
+				glfwGetWindowSize(window, &w, & h);
+				glViewport(0, 0, w, h);
 
 				glBegin(GL_QUADS);
 				glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
