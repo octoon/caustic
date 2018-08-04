@@ -284,6 +284,8 @@ namespace octoon
 	void
 	MonteCarlo::GatherFirstSampling(std::uint32_t& sampleCounter) noexcept
 	{
+		std::memset(renderData_.samples.data(), 0, sizeof(RadeonRays::float3) * this->numSamples_);
+
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->numSamples_; ++i)
 		{
@@ -294,10 +296,7 @@ namespace octoon
 			int prim_id = hit.primid;
 
 			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
-			{
-				sample = skyColor_;
 				continue;
-			}
 
 			tinyobj::mesh_t& mesh = scene_[shape_id].mesh;
 			tinyobj::material_t& mat = materials_[mesh.material_ids[prim_id]];
