@@ -66,9 +66,6 @@ namespace octoon
 
 		ldr_.resize(allocSize);
 		hdr_.resize(allocSize);
-		accum_.resize(allocSize);
-
-		renderData_.rays.resize(this->width_);
 
 		return true;
 	}
@@ -101,7 +98,10 @@ namespace octoon
 
 		this->api_ = RadeonRays::IntersectionApi::Create(deviceidx);
 
+		renderData_.rays.resize(this->width_);
 		renderData_.hits.resize(this->width_);
+		renderData_.samples.resize(this->width_);
+
 		renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * this->width_, nullptr);
 		renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
 		renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
@@ -249,8 +249,9 @@ namespace octoon
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			auto index = tile * this->width_ + i;
 			auto& hit = renderData_.hits[i];
+			auto& sample = renderData_.samples[i];
+
 			int shape_id = hit.shapeid;
 			int prim_id = hit.primid;
 
@@ -262,15 +263,15 @@ namespace octoon
 
 			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 			{
-				accum_[index].x = mat.emission[0];
-				accum_[index].y = mat.emission[1];
-				accum_[index].z = mat.emission[2];
+				sample.x = mat.emission[0];
+				sample.y = mat.emission[1];
+				sample.z = mat.emission[2];
 			}
 			else
 			{
-				accum_[index].x = mat.diffuse[0];
-				accum_[index].y = mat.diffuse[1];
-				accum_[index].z = mat.diffuse[2];
+				sample.x = mat.diffuse[0];
+				sample.y = mat.diffuse[1];
+				sample.z = mat.diffuse[2];
 			}
 		}
 	}
@@ -281,8 +282,9 @@ namespace octoon
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			auto index = tile * this->width_ + i;
 			auto& hit = renderData_.hits[i];
+			auto& sample = renderData_.samples[i];
+
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
 				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
@@ -290,23 +292,25 @@ namespace octoon
 
 				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 				{
-					accum_[index] *= RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+					sample.x *= mat.emission[0];
+					sample.y *= mat.emission[1];
+					sample.z *= mat.emission[2];
 				}
 				else
 				{
 					if (pass + 1 >= numBounces_)
-						accum_[index] *= 0.0f;
+						sample *= 0.0f;
 					else
 					{
-						accum_[index].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
-						accum_[index].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
-						accum_[index].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
+						sample.x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
+						sample.y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
+						sample.z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
 					}
 				}
 			}
 			else
 			{
-				accum_[index] *= skyColor_;
+				sample *= skyColor_;
 			}
 		}
 	}
@@ -336,17 +340,20 @@ namespace octoon
 	MonteCarlo::AccumSampling(std::uint32_t frame, std::uint32_t tile) noexcept
 	{
 #pragma omp parallel for
-		for (std::int32_t i = tile * this->width_; i < tile * this->width_ + this->width_; ++i)
+		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			hdr_[i].x += accum_[i].x;
-			hdr_[i].y += accum_[i].y;
-			hdr_[i].z += accum_[i].z;
+			auto index = tile * this->width_ + i;
 
-			std::uint8_t r = TonemapACES(hdr_[i].x / frame) * 255;
-			std::uint8_t g = TonemapACES(hdr_[i].y / frame) * 255;
-			std::uint8_t b = TonemapACES(hdr_[i].z / frame) * 255;
+			auto& hdr = hdr_[index];
+			hdr.x += renderData_.samples[i].x;
+			hdr.y += renderData_.samples[i].y;
+			hdr.z += renderData_.samples[i].z;
 
-			ldr_[i] = 0xFF << 24 | b << 16 | g << 8 | r;
+			std::uint8_t r = TonemapACES(hdr.x / frame) * 255;
+			std::uint8_t g = TonemapACES(hdr.y / frame) * 255;
+			std::uint8_t b = TonemapACES(hdr.z / frame) * 255;
+
+			ldr_[index] = 0xFF << 24 | b << 16 | g << 8 | r;
 		}
 	}
 

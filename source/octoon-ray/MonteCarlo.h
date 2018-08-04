@@ -18,6 +18,7 @@ namespace octoon
 	{
 		std::vector<RadeonRays::ray> rays;
 		std::vector<RadeonRays::Intersection> hits;
+		std::vector<RadeonRays::float3> samples;
 
 		RadeonRays::Buffer* fr_rays;
 		RadeonRays::Buffer* fr_shadowrays;
@@ -75,7 +76,6 @@ namespace octoon
 
 		std::vector<std::uint32_t> ldr_;
 		std::vector<RadeonRays::float3> hdr_;
-		std::vector<RadeonRays::float3> accum_;
 
 		RenderData renderData_;
 
