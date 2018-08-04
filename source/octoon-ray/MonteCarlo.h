@@ -51,10 +51,12 @@ namespace octoon
 		bool init_RadeonRays_Scene();
 
 	private:
-		void AccumEnergy(std::uint32_t frame, std::uint32_t tile) noexcept;
 		void GatherEnergy(std::uint32_t pass, std::uint32_t tile) noexcept;
 		void GenerateRays(std::uint32_t frame);
 		void GenerateIntersection(std::uint32_t frame, std::uint32_t tile) noexcept;
+
+		void AccumEnergy(std::uint32_t frame, std::uint32_t tile) noexcept;
+		void AdaptiveSampling() noexcept;
 
 	private:
 		void Estimate(std::uint32_t frame, std::uint32_t y);

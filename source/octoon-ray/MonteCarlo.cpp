@@ -248,8 +248,8 @@ namespace octoon
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			auto index = tile * this->width_;
-			auto& hit = isect[index + i];
+			auto index = tile * this->width_ + i;
+			auto& hit = isect[index];
 			int shape_id = hit.shapeid;
 			int prim_id = hit.primid;
 
@@ -261,18 +261,18 @@ namespace octoon
 
 			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 			{
-				accum_[index + i].x = mat.emission[0];
-				accum_[index + i].y = mat.emission[1];
-				accum_[index + i].z = mat.emission[2];
+				accum_[index].x = mat.emission[0];
+				accum_[index].y = mat.emission[1];
+				accum_[index].z = mat.emission[2];
 			}
 			else
 			{
-				accum_[index + i].x = mat.diffuse[0];
-				accum_[index + i].y = mat.diffuse[1];
-				accum_[index + i].z = mat.diffuse[2];
+				accum_[index].x = mat.diffuse[0];
+				accum_[index].y = mat.diffuse[1];
+				accum_[index].z = mat.diffuse[2];
 			}
 
-			renderData_.rays[i] = view_[index + i];
+			renderData_.rays[i] = view_[index];
 			renderData_.normals_[i] = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 			renderData_.position_[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 		}
@@ -288,7 +288,13 @@ namespace octoon
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			auto index = tile * this->width_;
+			auto index = tile * this->width_ + i;
+			if (pass + 1 >= numBounces_)
+			{
+				accum_[index] *= 0.0f;
+				break;
+			}
+
 			auto& hit = renderData_.hits[i];
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
@@ -297,25 +303,18 @@ namespace octoon
 
 				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 				{
-					accum_[index + i] *= RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+					accum_[index] *= RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
 				}
 				else
 				{
-					if (pass + 1 >= numBounces_)
-					{
-						accum_[index + i] *= 0.0f;
-					}
-					else
-					{
-						accum_[index + i].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
-						accum_[index + i].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
-						accum_[index + i].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
-					}
+					accum_[index].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
+					accum_[index].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
+					accum_[index].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
 				}
 			}
 			else
 			{
-				accum_[index + i] *= skyColor_;
+				accum_[index] *= skyColor_;
 			}
 		}
 	}
@@ -366,6 +365,11 @@ namespace octoon
 			this->GatherEnergy(pass, tile);
 			this->GenerateRays(frame);
 		}
+	}
+
+	void
+	MonteCarlo::AdaptiveSampling() noexcept
+	{
 	}
 
 	void
