@@ -83,16 +83,23 @@ int main(int argc, const char* argv[])
 		{
 			std::vector<std::future<std::uint32_t>> queues;
 
-			for (std::int32_t y = height - 1; y > 0; y--)
-				queues.push_back(engine.render(y, frame));
+			std::uint8_t tileSize = 32;
+			std::uint8_t tileNumsX = width / tileSize;
+			std::uint8_t tileNumsY = height / tileSize;
+
+			for (std::int32_t y = 0; y < tileNumsY; y++)
+			{
+				for (std::int32_t x = 0; x < tileNumsX; x++)
+					queues.push_back(engine.render(frame, y * tileNumsX + x));
+			}
 
 			for (auto& it : queues)
 			{
 				if (::glfwWindowShouldClose(window))
 					goto exit;
 
-				auto y = it.get();
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width, 1, GL_RGBA, GL_UNSIGNED_BYTE, engine.raw_data(y));
+				it.get();
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, engine.raw_data(0));
 
 				int w = 0, h = 0;
 				glfwGetWindowSize(window, &w, & h);

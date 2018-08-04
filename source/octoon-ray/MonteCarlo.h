@@ -56,9 +56,10 @@ namespace octoon
 		void GatherHits(std::uint32_t frame, std::uint32_t tile) noexcept;
 
 		void AccumSampling(std::uint32_t frame, std::uint32_t tile) noexcept;
-		void AdaptiveSampling() noexcept;
+		void AdaptiveSampling(std::uint32_t tile) noexcept;
 
-	private:
+		void ColorTonemapping(std::uint32_t frame, std::uint32_t tile) noexcept;
+
 		void Estimate(std::uint32_t frame, std::uint32_t y);
 
 	private:
@@ -66,7 +67,10 @@ namespace octoon
 		std::uint32_t height_;
 
 		std::uint32_t numBounces_;
-		std::uint32_t numSamples_;
+
+		std::int32_t tileWidth_;
+		std::int32_t tileHeight_;
+		std::int32_t tileNums_;
 
 		RadeonRays::IntersectionApi* api_;
 

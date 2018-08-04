@@ -3,6 +3,7 @@
 #include "BxDF.h"
 
 #include <assert.h>
+#include <CL/cl.h>
 
 namespace octoon
 {
@@ -27,11 +28,12 @@ namespace octoon
 	MonteCarlo::MonteCarlo() noexcept
 		: camera_(0.f, 1.f, 3.f, 1000.f)
 		, numBounces_(5)
-		, numSamples_(1000)
 		, skyColor_(1.0f, 1.0f, 1.0f)
 		, light_(-0.01f, 1.9f, 0.1f)
 		, width_(0)
 		, height_(0)
+		, tileWidth_(32)
+		, tileHeight_(32)
 		, api_(nullptr)
 	{
 	}
@@ -52,6 +54,7 @@ namespace octoon
 	{
 		width_ = w;
 		height_ = h;
+		tileNums_ = tileWidth_ * tileHeight_;
 
 		if (!init_data()) throw std::runtime_error("init_data() fail");
 		if (!init_Gbuffers(w, h)) throw std::runtime_error("init_Gbuffers() fail");
@@ -98,13 +101,13 @@ namespace octoon
 
 		this->api_ = RadeonRays::IntersectionApi::Create(deviceidx);
 
-		renderData_.rays.resize(this->width_);
-		renderData_.hits.resize(this->width_);
-		renderData_.samples.resize(this->width_);
+		renderData_.rays.resize(this->tileNums_);
+		renderData_.hits.resize(this->tileNums_);
+		renderData_.samples.resize(this->tileNums_);
 
-		renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * this->width_, nullptr);
-		renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
-		renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
+		renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * this->tileNums_, nullptr);
+		renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->tileNums_, nullptr);
+		renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->tileNums_, nullptr);
 
 		return true;
 	}
@@ -147,7 +150,7 @@ namespace octoon
 	const std::uint32_t*
 	MonteCarlo::raw_data(std::uint32_t y) const noexcept
 	{
-		return &ldr_[y * this->width_];
+		return ldr_.data();
 	}
 
 	void
@@ -155,15 +158,22 @@ namespace octoon
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
-		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->width_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
+		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->tileNums_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
+
+		auto w = this->width_ / tileWidth_;
+		auto x = tile % w * tileWidth_;
+		auto y = tile / w * tileHeight_;
 
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->width_; ++i)
+		for (std::int32_t i = 0; i < tileNums_; ++i)
 		{
+			auto ix = x + i % tileWidth_;
+			auto iy = y + i / tileWidth_;
+
 			const float xstep = 2.0f / (float)this->width_;
 			const float ystep = 2.0f / (float)this->height_;
-			float x = -1.f + xstep * (float)i;
-			float y = ystep * (float)tile;
+			float x = xstep * (float)ix - 1.0f;
+			float y = ystep * (float)iy;
 			float z = 1.f;
 
 			rays[i].o = this->camera_;
@@ -176,7 +186,7 @@ namespace octoon
 			rays[i].SetDoBackfaceCulling(true);
 		}
 
-		std::memcpy(renderData_.rays.data(), rays, sizeof(RadeonRays::ray) * this->width_);
+		std::memcpy(renderData_.rays.data(), rays, sizeof(RadeonRays::ray) * this->tileNums_);
 
 		api_->UnmapBuffer(renderData_.fr_rays, rays, &e); e->Wait(); api_->DeleteEvent(e);
 	}
@@ -186,10 +196,10 @@ namespace octoon
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
-		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->width_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
+		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->tileNums_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->width_; ++i)
+		for (std::int32_t i = 0; i < this->tileNums_; ++i)
 		{
 			auto& hit = renderData_.hits[i];
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
@@ -204,7 +214,7 @@ namespace octoon
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, ior, frame, numSamples_);
+					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, ior, frame);
 					renderData_.rays[i].d = L;
 					renderData_.rays[i].o = ro + L * 1e-4f;
 					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
@@ -236,9 +246,9 @@ namespace octoon
 		RadeonRays::Intersection* hit = nullptr;
 
 		api_->QueryIntersection(renderData_.fr_rays, renderData_.rays.size(), renderData_.fr_hits, nullptr, nullptr);
-		api_->MapBuffer(renderData_.fr_hits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->width_, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
+		api_->MapBuffer(renderData_.fr_hits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->tileNums_, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
 
-		std::memcpy(renderData_.hits.data(), hit, sizeof(RadeonRays::Intersection) * this->width_);
+		std::memcpy(renderData_.hits.data(), hit, sizeof(RadeonRays::Intersection) * this->tileNums_);
 
 		api_->UnmapBuffer(renderData_.fr_hits, hit, &e); e->Wait(); api_->DeleteEvent(e);
 	}
@@ -247,7 +257,7 @@ namespace octoon
 	MonteCarlo::GatherFirstSampling(std::uint32_t tile) noexcept
 	{
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->width_; ++i)
+		for (std::int32_t i = 0; i < this->tileNums_; ++i)
 		{
 			auto& hit = renderData_.hits[i];
 			auto& sample = renderData_.samples[i];
@@ -280,7 +290,7 @@ namespace octoon
 	MonteCarlo::GatherSampling(std::uint32_t pass, std::uint32_t tile) noexcept
 	{
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->width_; ++i)
+		for (std::int32_t i = 0; i < this->tileNums_; ++i)
 		{
 			auto& hit = renderData_.hits[i];
 			auto& sample = renderData_.samples[i];
@@ -334,21 +344,52 @@ namespace octoon
 		}
 
 		this->AccumSampling(frame, tile);
+		this->AdaptiveSampling(tile);
+
+		this->ColorTonemapping(frame, tile);
 	}
 
 	void
 	MonteCarlo::AccumSampling(std::uint32_t frame, std::uint32_t tile) noexcept
 	{
+		auto w = this->width_ / tileWidth_;
+		auto x = tile % w * tileWidth_;
+		auto y = tile / w * tileHeight_;
+
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->width_; ++i)
+		for (std::int32_t i = 0; i < tileNums_; ++i)
 		{
-			auto index = tile * this->width_ + i;
+			auto ix = x + i % tileWidth_;
+			auto iy = y + i / tileWidth_;
+			auto index = iy * this->width_ + ix;
 
 			auto& hdr = hdr_[index];
 			hdr.x += renderData_.samples[i].x;
 			hdr.y += renderData_.samples[i].y;
 			hdr.z += renderData_.samples[i].z;
+		}
+	}
 
+	void
+	MonteCarlo::AdaptiveSampling(std::uint32_t tile) noexcept
+	{
+	}
+
+	void
+	MonteCarlo::ColorTonemapping(std::uint32_t frame, std::uint32_t tile) noexcept
+	{
+		auto w = this->width_ / tileWidth_;
+		auto x = tile % w * tileWidth_;
+		auto y = tile / w * tileHeight_;
+
+#pragma omp parallel for
+		for (std::int32_t i = 0; i < tileNums_; ++i)
+		{
+			auto ix = x + i % tileWidth_;
+			auto iy = y + i / tileWidth_;
+			auto index = iy * this->width_ + ix;
+
+			auto& hdr = hdr_[index];
 			std::uint8_t r = TonemapACES(hdr.x / frame) * 255;
 			std::uint8_t g = TonemapACES(hdr.y / frame) * 255;
 			std::uint8_t b = TonemapACES(hdr.z / frame) * 255;
@@ -358,7 +399,7 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::render(std::uint32_t tile, std::uint32_t frame) noexcept
+	MonteCarlo::render(std::uint32_t frame, std::uint32_t tile) noexcept
 	{
 		this->Estimate(frame, tile);
 	}
