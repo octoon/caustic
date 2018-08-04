@@ -116,8 +116,8 @@ namespace octoon
 	bool
 	MonteCarlo::init_data()
 	{
-		std::string basepath = "../Resources/CornellBox/";
-		std::string filename = basepath + "orig.objm";
+		std::string basepath = "../Resources/CornellBoxTwoSpheres/";
+		std::string filename = basepath + "two_ball_cornell.obj";
 		std::string res = LoadObj(scene_, materials_, filename.c_str(), basepath.c_str());
 
 		return res != "" ? false : true;
@@ -282,7 +282,7 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GatherFirstSampling() noexcept
+	MonteCarlo::GatherFirstSampling(std::uint32_t& sampleCounter) noexcept
 	{
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->numSamples_; ++i)
@@ -314,6 +314,8 @@ namespace octoon
 				sample.y = mat.diffuse[1];
 				sample.z = mat.diffuse[2];
 			}
+
+			sampleCounter++;
 		}
 	}
 
@@ -364,16 +366,20 @@ namespace octoon
 
 		this->GenerateWorkspace(size.x * size.y);
 
+		std::uint32_t count = 0;
 		this->GenerateFirstRays(frame, offset, size);
 		this->GatherHits();
-		this->GatherFirstSampling();
+		this->GatherFirstSampling(count);
 
-		for (std::int32_t pass = 0; pass < numBounces_; pass++)
+		if (count > 0)
 		{
-			// prepare ray for indirect lighting gathering
-			this->GenerateRays(frame);
-			this->GatherHits();
-			this->GatherSampling(pass);
+			for (std::int32_t pass = 0; pass < numBounces_; pass++)
+			{
+				// prepare ray for indirect lighting gathering
+				this->GenerateRays(frame);
+				this->GatherHits();
+				this->GatherSampling(pass);
+			}
 		}
 
 		this->AccumSampling(frame, offset, size);

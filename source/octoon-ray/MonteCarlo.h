@@ -53,7 +53,7 @@ namespace octoon
 		void GenerateRays(std::uint32_t frame) noexcept;
 		void GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
-		void GatherFirstSampling() noexcept;
+		void GatherFirstSampling(std::uint32_t& sampleCounter) noexcept;
 		void GatherSampling(std::uint32_t pass) noexcept;
 		void GatherHits() noexcept;
 
