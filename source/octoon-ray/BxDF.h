@@ -88,7 +88,7 @@ namespace octoon
 
 	float rand()
 	{
-		static std::uint64_t seed = 0.0f;
+		static std::uint64_t seed = 0;
 		float hash = (std::sin(seed++) * 43758.5453123f);
 		return hash - std::floor(hash);
 	}
@@ -99,7 +99,7 @@ namespace octoon
 		float v = rand();
 
 		float a = 6.2831853f * v;
-		u = 2.0f * u - 1.;
+		u = 2.0f * u - 1.0f;
 		float sinTheta = std::sqrt(1.0f - u * u);
 
 		return RadeonRays::normalize(n + RadeonRays::float3(cos(a) * sinTheta, sin(a) * sinTheta, u));

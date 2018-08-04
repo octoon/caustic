@@ -37,9 +37,9 @@ namespace octoon
 
 		void setup(std::uint32_t w, std::uint32_t h) noexcept(false);
 
-		const std::uint32_t* raw_data(std::uint32_t y) const noexcept;
+		const std::uint32_t* data() const noexcept;
 
-		void render(std::uint32_t frame, std::uint32_t y) noexcept;
+		void render(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
 	private:
 		bool init_data();
@@ -48,29 +48,29 @@ namespace octoon
 		bool init_RadeonRays_Scene();
 
 	private:
+		void GenerateWorkspace(std::uint32_t numSamples);
+
 		void GenerateRays(std::uint32_t frame) noexcept;
-		void GenerateFirstRays(std::uint32_t frame, std::uint32_t tile) noexcept;
+		void GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
-		void GatherFirstSampling(std::uint32_t tile) noexcept;
-		void GatherSampling(std::uint32_t pass, std::uint32_t tile) noexcept;
-		void GatherHits(std::uint32_t frame, std::uint32_t tile) noexcept;
+		void GatherFirstSampling() noexcept;
+		void GatherSampling(std::uint32_t pass) noexcept;
+		void GatherHits() noexcept;
 
-		void AccumSampling(std::uint32_t frame, std::uint32_t tile) noexcept;
-		void AdaptiveSampling(std::uint32_t tile) noexcept;
+		void AccumSampling(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
+		void AdaptiveSampling() noexcept;
 
-		void ColorTonemapping(std::uint32_t frame, std::uint32_t tile) noexcept;
+		void ColorTonemapping(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
-		void Estimate(std::uint32_t frame, std::uint32_t y);
+		void Estimate(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size);
 
 	private:
 		std::uint32_t width_;
 		std::uint32_t height_;
 
 		std::uint32_t numBounces_;
-
-		std::int32_t tileWidth_;
-		std::int32_t tileHeight_;
-		std::int32_t tileNums_;
+		std::uint32_t numSamples_;
+		std::uint32_t tileNums_;
 
 		RadeonRays::IntersectionApi* api_;
 

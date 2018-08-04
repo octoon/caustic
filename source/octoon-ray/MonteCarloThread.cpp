@@ -5,6 +5,7 @@ namespace octoon
 {
 	MonteCarloThread::MonteCarloThread() noexcept
 		: isQuitRequest_(false)
+		, tileSize_(32)
 	{
 	}
 
@@ -25,13 +26,32 @@ namespace octoon
 	{
 		width_ = w;
 		height_ = h;
+		tileWidth_ = width_ / tileSize_;
+		tileHeight_ = height_ / tileSize_;
  		thread_ = std::thread(std::bind(&MonteCarloThread::thread, this));
+	}
+
+	void
+	MonteCarloThread::setTileSize(std::uint32_t size) noexcept
+	{
+		tileSize_ = size;
+		tileWidth_ = width_ / tileSize_;
+		tileHeight_ = height_ / tileSize_;
+	}
+
+	std::uint32_t
+	MonteCarloThread::getTileSize() const noexcept
+	{
+		return tileSize_;
 	}
 
 	std::future<std::uint32_t>
 	MonteCarloThread::render(std::uint32_t frame, std::uint32_t tile) noexcept
 	{
-		std::packaged_task<std::uint32_t()> task([=]() {  pipeline_->render(frame, tile); return tile; });
+		auto x = tile % tileWidth_ * tileSize_;
+		auto y = tile / tileWidth_ * tileSize_;
+
+		std::packaged_task<std::uint32_t()> task([=]() {  pipeline_->render(frame, RadeonRays::int2(x, y), RadeonRays::int2(tileSize_, tileSize_)); return tile; });
 
 		auto f = task.get_future();
 

@@ -14,7 +14,10 @@ namespace octoon
 
 		void setup(std::uint32_t w, std::uint32_t h) noexcept(false);
 
-		const std::uint32_t* raw_data(std::uint32_t y) const noexcept { return pipeline_->raw_data(y); };
+		void setTileSize(std::uint32_t size) noexcept;
+		std::uint32_t getTileSize() const noexcept;
+
+		const std::uint32_t* data() const noexcept { return pipeline_->data(); };
 
 		std::future<std::uint32_t> render(std::uint32_t frame, std::uint32_t y) noexcept;
 
@@ -25,6 +28,10 @@ namespace octoon
 		std::uint32_t width_;
 		std::uint32_t height_;
 		std::unique_ptr<MonteCarlo> pipeline_;
+
+		std::int32_t tileSize_;
+		std::int32_t tileWidth_;
+		std::int32_t tileHeight_;
 
 		bool isQuitRequest_;
 		std::mutex lock_;

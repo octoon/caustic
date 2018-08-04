@@ -87,10 +87,9 @@ int main(int argc, const char* argv[])
 			std::uint8_t tileNumsX = width / tileSize;
 			std::uint8_t tileNumsY = height / tileSize;
 
-			for (std::int32_t y = 0; y < tileNumsY; y++)
+			for (std::int32_t y = 0; y < tileNumsX * tileNumsY; y++)
 			{
-				for (std::int32_t x = 0; x < tileNumsX; x++)
-					queues.push_back(engine.render(frame, y * tileNumsX + x));
+				queues.push_back(engine.render(frame, y));
 			}
 
 			for (auto& it : queues)
@@ -99,7 +98,7 @@ int main(int argc, const char* argv[])
 					goto exit;
 
 				it.get();
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, engine.raw_data(0));
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, engine.data());
 
 				int w = 0, h = 0;
 				glfwGetWindowSize(window, &w, & h);

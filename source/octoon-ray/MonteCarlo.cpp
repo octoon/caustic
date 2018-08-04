@@ -28,14 +28,17 @@ namespace octoon
 	MonteCarlo::MonteCarlo() noexcept
 		: camera_(0.f, 1.f, 3.f, 1000.f)
 		, numBounces_(5)
+		, numSamples_(0)
+		, tileNums_(0)
 		, skyColor_(1.0f, 1.0f, 1.0f)
 		, light_(-0.01f, 1.9f, 0.1f)
 		, width_(0)
 		, height_(0)
-		, tileWidth_(32)
-		, tileHeight_(32)
 		, api_(nullptr)
 	{
+		renderData_.fr_rays = nullptr;
+		renderData_.fr_hits = nullptr;
+		renderData_.fr_intersections = nullptr;
 	}
 
 	MonteCarlo::MonteCarlo(std::uint32_t w, std::uint32_t h) noexcept
@@ -46,7 +49,14 @@ namespace octoon
 
 	MonteCarlo::~MonteCarlo() noexcept
 	{
-		RadeonRays::IntersectionApi::Delete(api_);
+		if (renderData_.fr_rays)
+			api_->DeleteBuffer(renderData_.fr_rays);
+		if (renderData_.fr_hits)
+			api_->DeleteBuffer(renderData_.fr_hits);
+		if (renderData_.fr_intersections)
+			api_->DeleteBuffer(renderData_.fr_intersections);
+		if (api_)
+			RadeonRays::IntersectionApi::Delete(api_);
 	}
 
 	void
@@ -54,7 +64,6 @@ namespace octoon
 	{
 		width_ = w;
 		height_ = h;
-		tileNums_ = tileWidth_ * tileHeight_;
 
 		if (!init_data()) throw std::runtime_error("init_data() fail");
 		if (!init_Gbuffers(w, h)) throw std::runtime_error("init_Gbuffers() fail");
@@ -101,14 +110,6 @@ namespace octoon
 
 		this->api_ = RadeonRays::IntersectionApi::Create(deviceidx);
 
-		renderData_.rays.resize(this->tileNums_);
-		renderData_.hits.resize(this->tileNums_);
-		renderData_.samples.resize(this->tileNums_);
-
-		renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * this->tileNums_, nullptr);
-		renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->tileNums_, nullptr);
-		renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->tileNums_, nullptr);
-
 		return true;
 	}
 
@@ -148,27 +149,51 @@ namespace octoon
 	}
 
 	const std::uint32_t*
-	MonteCarlo::raw_data(std::uint32_t y) const noexcept
+	MonteCarlo::data() const noexcept
 	{
 		return ldr_.data();
 	}
 
 	void
-	MonteCarlo::GenerateFirstRays(std::uint32_t frame, std::uint32_t tile) noexcept
+	MonteCarlo::GenerateWorkspace(std::uint32_t numSamples)
+	{
+		if (tileNums_ < numSamples)
+		{
+			renderData_.rays.resize(numSamples);
+			renderData_.hits.resize(numSamples);
+			renderData_.samples.resize(numSamples);
+
+			if (renderData_.fr_rays)
+				api_->DeleteBuffer(renderData_.fr_rays);
+
+			if (renderData_.fr_hits)
+				api_->DeleteBuffer(renderData_.fr_hits);
+
+			if (renderData_.fr_intersections)
+				api_->DeleteBuffer(renderData_.fr_intersections);
+
+			renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * numSamples, nullptr);
+			renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numSamples, nullptr);
+			renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numSamples, nullptr);
+
+			tileNums_ = numSamples;
+		}
+
+		this->numSamples_ = numSamples;
+	}
+
+	void
+	MonteCarlo::GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
-		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->tileNums_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
-
-		auto w = this->width_ / tileWidth_;
-		auto x = tile % w * tileWidth_;
-		auto y = tile / w * tileHeight_;
+		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->numSamples_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < tileNums_; ++i)
 		{
-			auto ix = x + i % tileWidth_;
-			auto iy = y + i / tileWidth_;
+			auto ix = offset.x + i % size.x;
+			auto iy = offset.y + i / size.x;
 
 			const float xstep = 2.0f / (float)this->width_;
 			const float ystep = 2.0f / (float)this->height_;
@@ -186,7 +211,7 @@ namespace octoon
 			rays[i].SetDoBackfaceCulling(true);
 		}
 
-		std::memcpy(renderData_.rays.data(), rays, sizeof(RadeonRays::ray) * this->tileNums_);
+		std::memcpy(renderData_.rays.data(), rays, sizeof(RadeonRays::ray) * this->numSamples_);
 
 		api_->UnmapBuffer(renderData_.fr_rays, rays, &e); e->Wait(); api_->DeleteEvent(e);
 	}
@@ -196,10 +221,10 @@ namespace octoon
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
-		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->tileNums_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
+		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->numSamples_, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->tileNums_; ++i)
+		for (std::int32_t i = 0; i < this->numSamples_; ++i)
 		{
 			auto& hit = renderData_.hits[i];
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
@@ -240,24 +265,24 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GatherHits(std::uint32_t frame, std::uint32_t tile) noexcept
+	MonteCarlo::GatherHits() noexcept
 	{
 		RadeonRays::Event* e = nullptr;
 		RadeonRays::Intersection* hit = nullptr;
 
 		api_->QueryIntersection(renderData_.fr_rays, renderData_.rays.size(), renderData_.fr_hits, nullptr, nullptr);
-		api_->MapBuffer(renderData_.fr_hits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->tileNums_, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
+		api_->MapBuffer(renderData_.fr_hits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->numSamples_, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
 
-		std::memcpy(renderData_.hits.data(), hit, sizeof(RadeonRays::Intersection) * this->tileNums_);
+		std::memcpy(renderData_.hits.data(), hit, sizeof(RadeonRays::Intersection) * this->numSamples_);
 
 		api_->UnmapBuffer(renderData_.fr_hits, hit, &e); e->Wait(); api_->DeleteEvent(e);
 	}
 
 	void
-	MonteCarlo::GatherFirstSampling(std::uint32_t tile) noexcept
+	MonteCarlo::GatherFirstSampling() noexcept
 	{
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->tileNums_; ++i)
+		for (std::int32_t i = 0; i < this->numSamples_; ++i)
 		{
 			auto& hit = renderData_.hits[i];
 			auto& sample = renderData_.samples[i];
@@ -287,10 +312,10 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GatherSampling(std::uint32_t pass, std::uint32_t tile) noexcept
+	MonteCarlo::GatherSampling(std::uint32_t pass) noexcept
 	{
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < this->tileNums_; ++i)
+		for (std::int32_t i = 0; i < this->numSamples_; ++i)
 		{
 			auto& hit = renderData_.hits[i];
 			auto& sample = renderData_.samples[i];
@@ -326,41 +351,39 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::Estimate(std::uint32_t frame, std::uint32_t tile)
+	MonteCarlo::Estimate(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size)
 	{
 		RadeonRays::Event* e = nullptr;
 		RadeonRays::Intersection* hit = nullptr;
 
-		this->GenerateFirstRays(frame, tile);
-		this->GatherHits(frame, tile);
-		this->GatherFirstSampling(tile);
+		this->GenerateWorkspace(size.x * size.y);
+
+		this->GenerateFirstRays(frame, offset, size);
+		this->GatherHits();
+		this->GatherFirstSampling();
 
 		for (std::int32_t pass = 0; pass < numBounces_; pass++)
 		{
 			// prepare ray for indirect lighting gathering
 			this->GenerateRays(frame);
-			this->GatherHits(frame, tile);
-			this->GatherSampling(pass, tile);
+			this->GatherHits();
+			this->GatherSampling(pass);
 		}
 
-		this->AccumSampling(frame, tile);
-		this->AdaptiveSampling(tile);
+		this->AccumSampling(frame, offset, size);
+		this->AdaptiveSampling();
 
-		this->ColorTonemapping(frame, tile);
+		this->ColorTonemapping(frame, offset, size);
 	}
 
 	void
-	MonteCarlo::AccumSampling(std::uint32_t frame, std::uint32_t tile) noexcept
+	MonteCarlo::AccumSampling(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
-		auto w = this->width_ / tileWidth_;
-		auto x = tile % w * tileWidth_;
-		auto y = tile / w * tileHeight_;
-
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < tileNums_; ++i)
+		for (std::int32_t i = 0; i < size.x * size.y; ++i)
 		{
-			auto ix = x + i % tileWidth_;
-			auto iy = y + i / tileWidth_;
+			auto ix = offset.x + i % size.x;
+			auto iy = offset.y + i / size.x;
 			auto index = iy * this->width_ + ix;
 
 			auto& hdr = hdr_[index];
@@ -371,22 +394,18 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::AdaptiveSampling(std::uint32_t tile) noexcept
+	MonteCarlo::AdaptiveSampling() noexcept
 	{
 	}
 
 	void
-	MonteCarlo::ColorTonemapping(std::uint32_t frame, std::uint32_t tile) noexcept
+	MonteCarlo::ColorTonemapping(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
-		auto w = this->width_ / tileWidth_;
-		auto x = tile % w * tileWidth_;
-		auto y = tile / w * tileHeight_;
-
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < tileNums_; ++i)
+		for (std::int32_t i = 0; i < size.x * size.y; ++i)
 		{
-			auto ix = x + i % tileWidth_;
-			auto iy = y + i / tileWidth_;
+			auto ix = offset.x + i % size.x;
+			auto iy = offset.y + i / size.x;
 			auto index = iy * this->width_ + ix;
 
 			auto& hdr = hdr_[index];
@@ -399,8 +418,8 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::render(std::uint32_t frame, std::uint32_t tile) noexcept
+	MonteCarlo::render(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
-		this->Estimate(frame, tile);
+		this->Estimate(frame, offset, size);
 	}
 }
