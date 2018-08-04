@@ -31,7 +31,7 @@ namespace octoon
 	std::future<std::uint32_t>
 	MonteCarloThread::render(std::uint32_t frame, std::uint32_t tile) noexcept
 	{
-		std::packaged_task<std::uint32_t()> task([=]() {  pipeline_->render(frame, tile); return y; });
+		std::packaged_task<std::uint32_t()> task([=]() {  pipeline_->render(frame, tile); return tile; });
 
 		auto f = task.get_future();
 
