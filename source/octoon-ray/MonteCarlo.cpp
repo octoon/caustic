@@ -326,9 +326,9 @@ namespace octoon
 						}
 						else
 						{
-							accum_[index + i].x *= mat.diffuse[0] * renderData_.rays[i].d.w;
-							accum_[index + i].y *= mat.diffuse[1] * renderData_.rays[i].d.w;
-							accum_[index + i].z *= mat.diffuse[2] * renderData_.rays[i].d.w;
+							accum_[index + i].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
+							accum_[index + i].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
+							accum_[index + i].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
 						}
 					}
 				}
