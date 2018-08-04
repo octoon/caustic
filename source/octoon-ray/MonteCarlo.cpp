@@ -202,7 +202,7 @@ namespace octoon
 			float z = 1.f;
 
 			rays[i].o = this->camera_;
-			rays[i].d = RadeonRays::float3(x - this->camera_.x, y - this->camera_.y, z - this->camera_.z);
+			rays[i].d = RadeonRays::float3((x - this->camera_.x) * width_ / height_, y - this->camera_.y, z - this->camera_.z);
 			rays[i].d.normalize();
 			rays[i].SetMaxT(std::numeric_limits<float>::max());
 			rays[i].SetTime(0.0f);
@@ -240,12 +240,15 @@ namespace octoon
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
 					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, ior, frame);
+					if (RadeonRays::dot(norm, L) < 0.0f)
+						L = -L;
+
 					renderData_.rays[i].d = L;
 					renderData_.rays[i].o = ro + L * 1e-4f;
 					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
 					renderData_.rays[i].SetTime(0.0f);
 					renderData_.rays[i].SetMask(-1);
-					renderData_.rays[i].SetActive(RadeonRays::dot(norm, L) > 0.0 ? true : false);
+					renderData_.rays[i].SetActive(true);
 					renderData_.rays[i].SetDoBackfaceCulling(ior > 1.0f ? false : true);
 				}
 				else
@@ -291,7 +294,10 @@ namespace octoon
 			int prim_id = hit.primid;
 
 			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+			{
+				sample = skyColor_;
 				continue;
+			}
 
 			tinyobj::mesh_t& mesh = scene_[shape_id].mesh;
 			tinyobj::material_t& mat = materials_[mesh.material_ids[prim_id]];

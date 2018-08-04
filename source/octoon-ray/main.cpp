@@ -54,8 +54,8 @@ void dumpTGA(const char* filepath, std::uint8_t pixesl[], std::uint32_t width, s
 
 int main(int argc, const char* argv[])
 {
-	auto width = 640;
-	auto height = 360;
+	auto width = 1920;
+	auto height = 1080;
 
 	if (::glfwInit() == GL_FALSE)
 		return 0;
