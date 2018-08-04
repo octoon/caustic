@@ -100,6 +100,9 @@ namespace octoon
 
 		this->api_ = RadeonRays::IntersectionApi::Create(deviceidx);
 
+		renderData_.hits.resize(this->width_);
+		renderData_.normals_.resize(this->width_);
+		renderData_.position_.resize(this->width_);
 		renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * this->width_, nullptr);
 		renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
 		renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * this->width_, nullptr);
@@ -235,21 +238,17 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GenerateIntersection(std::uint32_t frame, std::uint32_t y) noexcept
+	MonteCarlo::GenerateIntersection(std::uint32_t frame, std::uint32_t tile) noexcept
 	{
 		RadeonRays::Event* e = nullptr;
 		RadeonRays::Intersection* isect = nullptr;
 
 		api_->MapBuffer(this->isect_buffer_, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->width_ * this->height_, (void**)&isect, &e); e->Wait(); api_->DeleteEvent(e);
 
-		renderData_.hits.resize(this->width_);
-		renderData_.normals_.resize(this->width_);
-		renderData_.position_.resize(this->width_);
-
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			auto index = y * this->width_;
+			auto index = tile * this->width_;
 			auto& hit = isect[index + i];
 			int shape_id = hit.shapeid;
 			int prim_id = hit.primid;
@@ -278,18 +277,18 @@ namespace octoon
 			renderData_.position_[i] = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 		}
 
-		std::memcpy(renderData_.hits.data(), &isect[y * this->width_], sizeof(RadeonRays::Intersection) * this->width_);
+		std::memcpy(renderData_.hits.data(), &isect[tile * this->width_], sizeof(RadeonRays::Intersection) * this->width_);
 
 		api_->UnmapBuffer(this->isect_buffer_, isect, &e); e->Wait(); api_->DeleteEvent(e);
 	}
 
 	void
-	MonteCarlo::GatherEnergy(std::uint32_t pass, std::uint32_t y) noexcept
+	MonteCarlo::GatherEnergy(std::uint32_t pass, std::uint32_t tile) noexcept
 	{
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->width_; ++i)
 		{
-			auto index = y * this->width_;
+			auto index = tile * this->width_;
 			auto& hit = renderData_.hits[i];
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
@@ -322,7 +321,29 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::Estimate(std::uint32_t frame, std::uint32_t y)
+	MonteCarlo::AccumEnergy(std::uint32_t frame, std::uint32_t tile) noexcept
+	{
+#pragma omp parallel for
+		for (std::int32_t i = tile * this->width_; i < tile * this->width_ + this->width_; ++i)
+		{
+			hdr_[i].x += accum_[i].x;
+			hdr_[i].y += accum_[i].y;
+			hdr_[i].z += accum_[i].z;
+		}
+
+#pragma omp parallel for
+		for (std::int32_t i = tile * this->width_; i < tile * this->width_ + this->width_; ++i)
+		{
+			std::uint8_t r = TonemapACES(hdr_[i].x / frame) * 255;
+			std::uint8_t g = TonemapACES(hdr_[i].y / frame) * 255;
+			std::uint8_t b = TonemapACES(hdr_[i].z / frame) * 255;
+
+			ldr_[i] = 0xFF << 24 | b << 16 | g << 8 | r;
+		}
+	}
+
+	void
+	MonteCarlo::Estimate(std::uint32_t frame, std::uint32_t tile)
 	{
 		RadeonRays::Event* e = nullptr;
 		RadeonRays::Intersection* hit = nullptr;
@@ -342,7 +363,7 @@ namespace octoon
 
 			api_->UnmapBuffer(renderData_.fr_hits, hit, &e); e->Wait(); api_->DeleteEvent(e);
 
-			this->GatherEnergy(pass, y);
+			this->GatherEnergy(pass, tile);
 			this->GenerateRays(frame);
 		}
 	}
@@ -353,23 +374,6 @@ namespace octoon
 		this->GenerateIntersection(frame, y);
 		this->GenerateRays(frame);
 		this->Estimate(frame, y);
-
-#pragma omp parallel for
-		for (std::int32_t i = y * this->width_; i < y * this->width_ + this->width_; ++i)
-		{
-			hdr_[i].x += accum_[i].x;
-			hdr_[i].y += accum_[i].y;
-			hdr_[i].z += accum_[i].z;
-		}
-
-#pragma omp parallel for
-		for (std::int32_t i = y * this->width_; i < y * this->width_ + this->width_; ++i)
-		{
-			std::uint8_t r = TonemapACES(hdr_[i].x / frame) * 255;
-			std::uint8_t g = TonemapACES(hdr_[i].y / frame) * 255;
-			std::uint8_t b = TonemapACES(hdr_[i].z / frame) * 255;
-
-			ldr_[i] = 0xFF << 24 | b << 16 | g << 8 | r;
-		}
+		this->AccumEnergy(frame, y);
 	}
 }

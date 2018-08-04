@@ -14,7 +14,7 @@ namespace octoon
 	inline RadeonRays::float3 refract(const RadeonRays::float3& I, const RadeonRays::float3& normal, float refractRatio)
 	{
 		float dt = RadeonRays::dot(I, normal);
-		float s2 = 1.0 - dt * dt;
+		float s2 = 1.0f - dt * dt;
 		float st2 = refractRatio * refractRatio * s2;
 		float cost2 = 1 - st2;
 		return (I - normal * dt) * refractRatio - normal * std::sqrt(cost2);
@@ -36,7 +36,7 @@ namespace octoon
 		float a = sqrt(a2);
 		float Vis_SmithV = NoL * (NoV * (1 - a) + a);
 		float Vis_SmithL = NoV * (NoL * (1 - a) + a);
-		return 0.5 * 1.0f / (Vis_SmithV + Vis_SmithL);
+		return 0.5f * 1.0f / (Vis_SmithV + Vis_SmithL);
 	}
 
 	float DiffuseBRDF(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
@@ -46,11 +46,10 @@ namespace octoon
 		{
 			auto H = RadeonRays::normalize(L + V);
 
-			float nh = RadeonRays::dot(H, N);
 			float vh = RadeonRays::dot(V, L);
 			float nv = RadeonRays::dot(V, N);
 
-			float FD90 = (0.5 + 2 * vh * vh) * roughness;
+			float FD90 = (0.5f + 2 * vh * vh) * roughness;
 			float FdV = 1 + (FD90 - 1) * std::pow(1 - nv, 5);
 			float FdL = 1 + (FD90 - 1) * std::pow(1 - nl, 5);
 
@@ -89,8 +88,8 @@ namespace octoon
 
 	float rand()
 	{
-		static float seed = 0.0;
-		auto hash = (std::sin(seed++) * 43758.5453123);
+		static float seed = 0.0f;
+		auto hash = (std::sin(seed++) * 43758.5453123f);
 		return hash - std::floor(hash);
 	}
 
@@ -100,8 +99,8 @@ namespace octoon
 		float v = rand();
 
 		float a = 6.2831853f * v;
-		u = 2. * u - 1.;
-		float sinTheta = std::sqrt(1. - u * u);
+		u = 2.0f * u - 1.;
+		float sinTheta = std::sqrt(1.0f - u * u);
 
 		return RadeonRays::normalize(n + RadeonRays::float3(cos(a) * sinTheta, sin(a) * sinTheta, u));
 	}
@@ -118,6 +117,7 @@ namespace octoon
 		{
 			auto R = RadeonRays::normalize(reflect(V, N));
 			auto L = LobeDirection(R, roughness, i, samplesCount);
+
 			// L.w = SpecularBRDF_GGX(N, L, -V, roughness);
 
 			return L;
@@ -129,6 +129,7 @@ namespace octoon
 		}
 
 		auto L = CosineDirection(N);
+
 		// L.w = DiffuseBRDF(N, L, -V, roughness);
 
 		return L;
