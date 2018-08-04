@@ -184,7 +184,7 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GenerateRays(std::uint32_t frame, std::uint32_t y)
+	MonteCarlo::GenerateRays(std::uint32_t frame)
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
@@ -284,6 +284,44 @@ namespace octoon
 	}
 
 	void
+	MonteCarlo::GatherEnergy(std::uint32_t pass, std::uint32_t y) noexcept
+	{
+#pragma omp parallel for
+		for (std::int32_t i = 0; i < this->width_; ++i)
+		{
+			auto index = y * this->width_;
+			auto& hit = renderData_.hits[i];
+			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
+			{
+				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
+				tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
+
+				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+				{
+					accum_[index + i] *= RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
+				}
+				else
+				{
+					if (pass + 1 >= numBounces_)
+					{
+						accum_[index + i] *= 0.0f;
+					}
+					else
+					{
+						accum_[index + i].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
+						accum_[index + i].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
+						accum_[index + i].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
+					}
+				}
+			}
+			else
+			{
+				accum_[index + i] *= skyColor_;
+			}
+		}
+	}
+
+	void
 	MonteCarlo::Estimate(std::uint32_t frame, std::uint32_t y)
 	{
 		RadeonRays::Event* e = nullptr;
@@ -304,41 +342,8 @@ namespace octoon
 
 			api_->UnmapBuffer(renderData_.fr_hits, hit, &e); e->Wait(); api_->DeleteEvent(e);
 
-#pragma omp parallel for
-			for (std::int32_t i = 0; i < this->width_; ++i)
-			{
-				auto index = y * this->width_;
-				auto& hit = renderData_.hits[i];
-				if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
-				{
-					tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
-					tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
-
-					if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
-					{
-						accum_[index + i] *= RadeonRays::float3(mat.emission[0], mat.emission[1], mat.emission[2]);
-					}
-					else
-					{
-						if (pass + 1 >= numBounces_)
-						{
-							accum_[index + i] *= 0.0f;
-						}
-						else
-						{
-							accum_[index + i].x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
-							accum_[index + i].y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
-							accum_[index + i].z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
-						}
-					}
-				}
-				else
-				{
-					accum_[index + i] *= skyColor_;
-				}
-			}
-
-			this->GenerateRays(frame, y);
+			this->GatherEnergy(pass, y);
+			this->GenerateRays(frame);
 		}
 	}
 
@@ -346,7 +351,7 @@ namespace octoon
 	MonteCarlo::render(std::uint32_t y, std::uint32_t frame) noexcept
 	{
 		this->GenerateIntersection(frame, y);
-		this->GenerateRays(frame, y);
+		this->GenerateRays(frame);
 		this->Estimate(frame, y);
 
 #pragma omp parallel for
