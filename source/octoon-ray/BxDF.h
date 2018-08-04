@@ -88,7 +88,7 @@ namespace octoon
 
 	float rand()
 	{
-		static float seed = 0.0f;
+		static std::uint64_t seed = 0.0f;
 		auto hash = (std::sin(seed++) * 43758.5453123f);
 		return hash - std::floor(hash);
 	}
