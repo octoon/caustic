@@ -18,9 +18,6 @@ namespace octoon
 	{
 		std::vector<RadeonRays::ray> rays;
 		std::vector<RadeonRays::Intersection> hits;
-		std::vector<RadeonRays::float4> albede_;
-		std::vector<RadeonRays::float4> normals_;
-		std::vector<RadeonRays::float4> position_;
 
 		RadeonRays::Buffer* fr_rays;
 		RadeonRays::Buffer* fr_shadowrays;
@@ -47,15 +44,17 @@ namespace octoon
 		bool init_data();
 		bool init_Gbuffers(std::uint32_t w, std::uint32_t h) noexcept;
 		bool init_RadeonRays() noexcept;
-		bool init_RadeonRays_Camera();
 		bool init_RadeonRays_Scene();
 
 	private:
-		void GatherEnergy(std::uint32_t pass, std::uint32_t tile) noexcept;
-		void GenerateRays(std::uint32_t frame);
-		void GenerateIntersection(std::uint32_t frame, std::uint32_t tile) noexcept;
+		void GenerateRays(std::uint32_t frame) noexcept;
+		void GenerateFirstRays(std::uint32_t frame, std::uint32_t tile) noexcept;
 
-		void AccumEnergy(std::uint32_t frame, std::uint32_t tile) noexcept;
+		void GatherFirstSampling(std::uint32_t tile) noexcept;
+		void GatherSampling(std::uint32_t pass, std::uint32_t tile) noexcept;
+		void GatherHits(std::uint32_t frame, std::uint32_t tile) noexcept;
+
+		void AccumSampling(std::uint32_t frame, std::uint32_t tile) noexcept;
 		void AdaptiveSampling() noexcept;
 
 	private:
@@ -69,8 +68,6 @@ namespace octoon
 		std::uint32_t numSamples_;
 
 		RadeonRays::IntersectionApi* api_;
-		RadeonRays::Buffer* ray_buffer_;
-		RadeonRays::Buffer* isect_buffer_;
 
 		RadeonRays::float3 camera_;
 		RadeonRays::float3 skyColor_;
@@ -81,8 +78,6 @@ namespace octoon
 		std::vector<RadeonRays::float3> accum_;
 
 		RenderData renderData_;
-
-		std::vector<RadeonRays::ray> view_;
 
 		std::vector<tinyobj::shape_t> scene_;
 		std::vector<tinyobj::material_t> materials_;
