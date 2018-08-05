@@ -31,14 +31,15 @@ namespace octoon
 
 	inline RadeonRays::float4 UniformSampleSphere(const RadeonRays::float2& Xi)
 	{
-		float Phi = 2 * PI * Xi.x;
-		float CosTheta = 1 - 2 * Xi.y;
-		float SinTheta = std::sqrt(1 - CosTheta * CosTheta);
+		float phi = 2 * PI * Xi.x;
+
+		float cosTheta = 1 - 2 * Xi.y;
+		float sinTheta = std::sqrt(1 - cosTheta * cosTheta);
 
 		RadeonRays::float4 H;
-		H.x = SinTheta * cos(Phi);
-		H.y = SinTheta * sin(Phi);
-		H.z = CosTheta;
+		H.x = std::cos(phi) * sinTheta;
+		H.y = std::sin(phi) * sinTheta;
+		H.z = cosTheta;
 		H.w = 1.0 / (4 * PI);
 
 		return H;

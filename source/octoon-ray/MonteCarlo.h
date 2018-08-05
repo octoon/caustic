@@ -16,6 +16,8 @@ namespace octoon
 {
 	struct RenderData
 	{
+		std::uint32_t numEstimate;
+
 		std::vector<RadeonRays::ray> rays;
 		std::vector<RadeonRays::Intersection> hits;
 		std::vector<RadeonRays::float3> samples;
@@ -48,7 +50,7 @@ namespace octoon
 		bool init_RadeonRays_Scene();
 
 	private:
-		void GenerateWorkspace(std::uint32_t numSamples);
+		void GenerateWorkspace(std::uint32_t numEstimate);
 
 		void GenerateRays(std::uint32_t frame) noexcept;
 		void GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
@@ -56,6 +58,8 @@ namespace octoon
 		void GatherFirstSampling(std::uint32_t& sampleCounter) noexcept;
 		void GatherSampling(std::uint32_t pass) noexcept;
 		void GatherHits() noexcept;
+		void GatherShadowHits() noexcept;
+		void GatherLightSamples() noexcept;
 
 		void AccumSampling(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 		void AdaptiveSampling() noexcept;
@@ -69,7 +73,6 @@ namespace octoon
 		std::uint32_t height_;
 
 		std::uint32_t numBounces_;
-		std::uint32_t numSamples_;
 		std::uint32_t tileNums_;
 
 		RadeonRays::IntersectionApi* api_;

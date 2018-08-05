@@ -83,7 +83,7 @@ int main(int argc, const char* argv[])
 		{
 			std::vector<std::future<std::uint32_t>> queues;
 
-			std::uint8_t tileSize = 32;
+			std::uint8_t tileSize = 54;
 			std::uint8_t tileNumsX = width / tileSize;
 			std::uint8_t tileNumsY = height / tileSize;
 

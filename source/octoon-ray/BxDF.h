@@ -87,17 +87,19 @@ namespace octoon
 		return X * H.x + cross(N, X) * H.y + N * H.z;
 	}
 
-	RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, std::uint32_t i)
-	{
-		auto H = ImportanceSampleGGX(Hammersley(i, 100), roughness);
-		return TangentToWorld(H, n);
-	}
-
 	float rand()
 	{
 		static std::uint64_t seed = 0;
 		float hash = (std::sin(seed++) * 43758.5453123f);
 		return hash - std::floor(hash);
+	}
+
+	RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, std::uint32_t i)
+	{
+		float u = rand();
+		float v = rand();
+		auto H = ImportanceSampleGGX(RadeonRays::float2(u, v), roughness);
+		return TangentToWorld(H, n);
 	}
 
 	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n)
@@ -124,20 +126,9 @@ namespace octoon
 			return RadeonRays::normalize(refract(V, N, ior));
 
 		if (roughness < 1.0f)
-		{
-			auto R = RadeonRays::normalize(reflect(V, N));
-			auto L = LobeDirection(R, roughness, i);
+			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, i);
 
-			// L.w = SpecularBRDF_GGX(N, L, -V, roughness);
-
-			return L;
-		}
-
-		auto L = CosineDirection(N);
-
-		// L.w = DiffuseBRDF(N, L, -V, roughness);
-
-		return L;
+		return CosineDirection(N);
 	}
 }
 
