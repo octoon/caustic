@@ -298,7 +298,7 @@ namespace octoon
 			}
 		}
 
-		std::memcpy(rays, renderData_.rays.data(), sizeof(RadeonRays::ray) * renderData_.rays.size());
+		std::memcpy(rays, renderData_.rays.data(), sizeof(RadeonRays::ray) * this->renderData_.numEstimate);
 
 		api_->UnmapBuffer(renderData_.fr_rays, rays, &e); e->Wait(); api_->DeleteEvent(e);
 	}
