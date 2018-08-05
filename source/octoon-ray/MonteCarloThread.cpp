@@ -57,8 +57,12 @@ namespace octoon
 		{
 			pipeline_->render(frame,
 				RadeonRays::int2(x, y),
-				RadeonRays::int2(std::min(tileSize_, static_cast<std::int32_t>(width_ - x)),
-					std::min(tileSize_, static_cast<std::int32_t>(height_ - y))));
+				RadeonRays::int2(
+					std::min(tileSize_, static_cast<std::int32_t>(width_ - x)),
+					std::min(tileSize_, static_cast<std::int32_t>(height_ - y))
+				)
+			);
+
 			return tile;
 		});
 

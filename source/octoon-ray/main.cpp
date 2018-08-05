@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <ctime>
+#include <random>
 #include <GLFW/glfw3.h>
 #include <GL/GL.h>
 
@@ -85,16 +86,22 @@ int main(int argc, const char* argv[])
 
 		for (std::uint32_t frame = 1; frame < 10000; frame++)
 		{
-			std::vector<std::future<std::uint32_t>> queues;
-
 			std::uint16_t tileSize = 64;
 			std::uint16_t tileNumsX = width / tileSize + (width % tileSize > 0 ? 1 : 0);
 			std::uint16_t tileNumsY = height / tileSize + (height % tileSize > 0 ? 1 : 0);
 
-			for (std::int32_t y = 0; y < tileNumsX * tileNumsY; y++)
-			{
-				queues.push_back(engine.render(frame, y));
-			}
+			std::vector<int> tiles(tileNumsX * tileNumsY);
+			std::vector<std::future<std::uint32_t>> queues;
+
+			for (std::int32_t i = 0; i < tileNumsX * tileNumsY; i++)
+				tiles[i] = i;
+
+			std::random_device rd;
+			std::mt19937 g(rd());
+			std::shuffle(tiles.begin(), tiles.end(), g);
+
+			for (auto& it : tiles)
+				queues.push_back(engine.render(frame, it));
 
 			for (auto& it : queues)
 			{
