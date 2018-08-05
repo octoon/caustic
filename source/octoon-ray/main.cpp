@@ -122,6 +122,7 @@ int main(int argc, const char* argv[])
 				glfwSwapBuffers(window);
 			}
 		}
+		dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
 	}
 
 exit:
