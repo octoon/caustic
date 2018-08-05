@@ -103,6 +103,8 @@ int main(int argc, const char* argv[])
 			for (auto& it : tiles)
 				queues.push_back(engine.renderTile(frame, it));
 
+			/*queues.push_back(engine.renderFullscreen(frame));*/
+
 			for (auto& it : queues)
 			{
 				if (::glfwWindowShouldClose(window))
@@ -132,8 +134,8 @@ int main(int argc, const char* argv[])
 			std::cout << "average time: " << (cur_time - begin_time) / 1000.f / frame << std::endl;
 		}
 
-		std::time_t end_time = std::clock();
-		dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
+		system("pause");
+		dumpTGA("C:/Users/WangJun/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
 	}
 
 exit:
