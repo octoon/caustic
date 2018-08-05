@@ -83,9 +83,9 @@ int main(int argc, const char* argv[])
 		{
 			std::vector<std::future<std::uint32_t>> queues;
 
-			std::uint8_t tileSize = 54;
-			std::uint8_t tileNumsX = width / tileSize;
-			std::uint8_t tileNumsY = height / tileSize;
+			std::uint16_t tileSize = 54;
+			std::uint16_t tileNumsX = width / tileSize;
+			std::uint16_t tileNumsY = height / tileSize;
 
 			for (std::int32_t y = 0; y < tileNumsX * tileNumsY; y++)
 			{

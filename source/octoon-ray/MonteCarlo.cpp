@@ -102,16 +102,15 @@ namespace octoon
 			RadeonRays::DeviceInfo devinfo;
 			RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
 
-			if (devinfo.type == RadeonRays::DeviceInfo::kGpu)
-			{
-				deviceidx = idx;
-				break;
-			}
-
 			if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
 			{
 				deviceidx = idx;
-				break;
+				//break;
+			}
+
+			if (devinfo.type == RadeonRays::DeviceInfo::kGpu)
+			{
+				deviceidx = idx;
 			}
 		}
 
