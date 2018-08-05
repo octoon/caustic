@@ -1,6 +1,8 @@
 #include "MonteCarloThread.h"
 #include "MonteCarlo.h"
 
+#include <algorithm>
+
 namespace octoon
 {
 	MonteCarloThread::MonteCarloThread() noexcept
@@ -51,7 +53,14 @@ namespace octoon
 		auto x = tile % tileWidth_ * tileSize_;
 		auto y = tile / tileWidth_ * tileSize_;
 
-		std::packaged_task<std::uint32_t()> task([=]() {  pipeline_->render(frame, RadeonRays::int2(x, y), RadeonRays::int2(tileSize_, tileSize_)); return tile; });
+		std::packaged_task<std::uint32_t()> task([=]() 
+		{  
+			pipeline_->render(frame,
+				RadeonRays::int2(x, y),
+				RadeonRays::int2(std::min(tileSize_, static_cast<std::int32_t>(width_ - x)),
+					std::min(tileSize_, static_cast<std::int32_t>(height_ - y))));
+			return tile; 
+		});
 
 		auto f = task.get_future();
 
