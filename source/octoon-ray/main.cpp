@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <fstream>
+#include <iostream>
+#include <ctime>
 #include <random>
 #include <GLFW/glfw3.h>
 #include <GL/GL.h>
@@ -80,7 +82,9 @@ int main(int argc, const char* argv[])
 
 		octoon::MonteCarloThread engine(width, height);
 
-		for (std::uint32_t frame = 1; ; frame++)
+		std::time_t begin_time = std::clock();
+
+		for (std::uint32_t frame = 1; frame < 10000; frame++)
 		{
 			std::uint16_t tileSize = 64;
 			std::uint16_t tileNumsX = width / tileSize + (width % tileSize > 0 ? 1 : 0);
@@ -121,7 +125,14 @@ int main(int argc, const char* argv[])
 				glfwPollEvents();
 				glfwSwapBuffers(window);
 			}
+
+			std::time_t cur_time = std::clock();
+			std::cout << "pass: " << frame << std::endl;
+			std::cout << "total time: " << (cur_time - begin_time)/1000.f << std::endl;
+			std::cout << "average time: " << (cur_time - begin_time) / 1000.f / frame << std::endl;
 		}
+
+		std::time_t end_time = std::clock();
 		dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
 	}
 
