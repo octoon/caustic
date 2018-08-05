@@ -1,7 +1,6 @@
 #include "MonteCarlo.h"
 #include "Hammersley.h"
 #include "BxDF.h"
-
 #include <assert.h>
 #include <CL/cl.h>
 
@@ -71,6 +70,10 @@ namespace octoon
 		width_ = w;
 		height_ = h;
 
+		haltonEnum_ = std::make_unique<Halton_enum>(w, h);
+		haltonSampler_ = std::make_unique<Halton_sampler>();
+		haltonSampler_->init_faure();
+
 		if (!init_data()) throw std::runtime_error("init_data() fail");
 		if (!init_Gbuffers(w, h)) throw std::runtime_error("init_Gbuffers() fail");
 		if (!init_RadeonRays()) throw std::runtime_error("init_RadeonRays() fail");
@@ -137,7 +140,7 @@ namespace octoon
 			tinyobj::shape_t& objshape = this->scene_[id];
 
 			float* vertdata = objshape.mesh.positions.data();
-			int nvert = objshape.mesh.positions.size();
+			int nvert = objshape.mesh.positions.size() / 3;
 			int* indices = objshape.mesh.indices.data();
 			int nfaces = objshape.mesh.indices.size() / 3;
 
@@ -168,6 +171,7 @@ namespace octoon
 			renderData_.rays.resize(numEstimate);
 			renderData_.hits.resize(numEstimate);
 			renderData_.samples.resize(numEstimate);
+			renderData_.random.resize(numEstimate);
 
 			if (renderData_.fr_rays)
 				api_->DeleteBuffer(renderData_.fr_rays);
@@ -197,11 +201,28 @@ namespace octoon
 	}
 
 	void
+	MonteCarlo::GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
+	{
+#pragma omp parallel for
+		for (std::int32_t i = 0; i < tileNums_; ++i)
+		{
+			/*auto sx = haltonSampler_->sample(0, frame);
+			auto sy = haltonSampler_->sample(1, frame);*/
+
+			static int seed = 0;
+			this->renderData_.random[i] = RadeonRays::float2(rand(seed), rand(seed++));
+		}
+	}
+
+	void
 	MonteCarlo::GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
 		RadeonRays::ray* rays = nullptr;
 		RadeonRays::Event* e = nullptr;
 		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
+
+		float xstep = 2.0f / (float)this->width_;
+		float ystep = 2.0f / (float)this->height_;
 
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < tileNums_; ++i)
@@ -209,11 +230,9 @@ namespace octoon
 			auto ix = offset.x + i % size.x;
 			auto iy = offset.y + i / size.x;
 
-			const float xstep = 2.0f / (float)this->width_;
-			const float ystep = 2.0f / (float)this->height_;
-			float x = xstep * (float)ix - 1.0f;
-			float y = ystep * (float)iy;
-			float z = 1.f;
+			float x = xstep * ix - 1.0f + (renderData_.random[i].x * 2 - 1) / (float)this->width_;
+			float y = ystep * iy + renderData_.random[i].y / (float)this->height_;
+			float z = 1.0f;
 
 			rays[i].o = this->camera_;
 			rays[i].d = RadeonRays::float3((x - this->camera_.x) * width_ / height_, y - this->camera_.y, z - this->camera_.z);
@@ -253,7 +272,7 @@ namespace octoon
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, ior, frame);
+					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, ior, renderData_.random[i]);
 					if (ior <= 1.0f)
 					{
 						if (RadeonRays::dot(norm, L) < 0.0f)
@@ -398,6 +417,8 @@ namespace octoon
 		RadeonRays::Intersection* hit = nullptr;
 
 		this->GenerateWorkspace(size.x * size.y);
+		this->GenerateNoise(frame, offset, size);
+
 		this->GenerateFirstRays(frame, offset, size);
 
 		for (std::int32_t pass = 0; pass < numBounces_; pass++)
@@ -480,6 +501,14 @@ namespace octoon
 			auto index = iy * this->width_ + ix;
 
 			auto& hdr = hdr_[index];
+			assert(!std::isnan(hdr.x));
+			assert(!std::isnan(hdr.y));
+			assert(!std::isnan(hdr.z));
+
+			assert(std::isfinite(hdr.x));
+			assert(std::isfinite(hdr.y));
+			assert(std::isfinite(hdr.z));
+
 			std::uint8_t r = TonemapACES(hdr.x / frame) * 255;
 			std::uint8_t g = TonemapACES(hdr.y / frame) * 255;
 			std::uint8_t b = TonemapACES(hdr.z / frame) * 255;
