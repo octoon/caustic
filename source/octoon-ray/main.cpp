@@ -135,7 +135,7 @@ int main(int argc, const char* argv[])
 		}
 
 		system("pause");
-		dumpTGA("C:/Users/WangJun/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
+		dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
 	}
 
 exit:
