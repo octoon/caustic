@@ -19,7 +19,8 @@ namespace octoon
 
 		const std::uint32_t* data() const noexcept { return pipeline_->data(); };
 
-		std::future<std::uint32_t> render(std::uint32_t frame, std::uint32_t tile) noexcept;
+		std::future<std::uint32_t> renderTile(std::uint32_t frame, std::uint32_t tile) noexcept;
+		std::future<std::uint32_t> renderFullscreen(std::uint32_t frame) noexcept;
 
 	private:
 		void thread() noexcept;

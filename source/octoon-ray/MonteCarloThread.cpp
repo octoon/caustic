@@ -48,7 +48,7 @@ namespace octoon
 	}
 
 	std::future<std::uint32_t>
-	MonteCarloThread::render(std::uint32_t frame, std::uint32_t tile) noexcept
+	MonteCarloThread::renderTile(std::uint32_t frame, std::uint32_t tile) noexcept
 	{
 		auto x = tile % tileWidth_ * tileSize_;
 		auto y = tile / tileWidth_ * tileSize_;
@@ -64,6 +64,28 @@ namespace octoon
 			);
 
 			return tile;
+		});
+
+		auto f = task.get_future();
+
+		lock_.lock();
+		task_.push(std::move(task));
+		lock_.unlock();
+
+		return std::move(f);
+	}
+
+	std::future<std::uint32_t>
+	MonteCarloThread::renderFullscreen(std::uint32_t frame) noexcept
+	{
+		std::packaged_task<std::uint32_t()> task([=]()
+		{
+			pipeline_->render(frame,
+				RadeonRays::int2(0, 0),
+				RadeonRays::int2(width_, height_)
+			);
+
+			return 0;
 		});
 
 		auto f = task.get_future();
