@@ -101,7 +101,7 @@ int main(int argc, const char* argv[])
 			std::shuffle(tiles.begin(), tiles.end(), g);
 
 			for (auto& it : tiles)
-				queues.push_back(engine.render(frame, it));
+				queues.push_back(engine.renderTile(frame, it));
 
 			for (auto& it : queues)
 			{
