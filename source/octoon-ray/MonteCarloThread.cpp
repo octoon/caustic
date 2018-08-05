@@ -7,7 +7,7 @@ namespace octoon
 {
 	MonteCarloThread::MonteCarloThread() noexcept
 		: isQuitRequest_(false)
-		, tileSize_(54)
+		, tileSize_(64)
 	{
 	}
 
@@ -53,13 +53,13 @@ namespace octoon
 		auto x = tile % tileWidth_ * tileSize_;
 		auto y = tile / tileWidth_ * tileSize_;
 
-		std::packaged_task<std::uint32_t()> task([=]() 
-		{  
+		std::packaged_task<std::uint32_t()> task([=]()
+		{
 			pipeline_->render(frame,
 				RadeonRays::int2(x, y),
 				RadeonRays::int2(std::min(tileSize_, static_cast<std::int32_t>(width_ - x)),
 					std::min(tileSize_, static_cast<std::int32_t>(height_ - y))));
-			return tile; 
+			return tile;
 		});
 
 		auto f = task.get_future();

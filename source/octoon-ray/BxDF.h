@@ -87,28 +87,16 @@ namespace octoon
 		return X * H.x + cross(N, X) * H.y + N * H.z;
 	}
 
-	float rand()
+	RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, const RadeonRays::float2& Xi)
 	{
-		static std::uint64_t seed = 0;
-		float hash = (std::sin(seed++) * 43758.5453123f);
-		return hash - std::floor(hash);
-	}
-
-	RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, std::uint32_t i)
-	{
-		float u = rand();
-		float v = rand();
-		auto H = ImportanceSampleGGX(RadeonRays::float2(u, v), roughness);
+		auto H = ImportanceSampleGGX(Xi, roughness);
 		return TangentToWorld(H, n);
 	}
 
-	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n)
+	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, const RadeonRays::float2& Xi)
 	{
-		float u = rand();
-		float v = rand();
-
-		float a = 6.2831853f * v;
-		u = 2.0f * u - 1.0f;
+		float a = Xi.x * 2.0f * PI;
+		float u = Xi.y * 2.0f - 1.0f;
 		float sinTheta = std::sqrt(1.0f - u * u);
 
 		return RadeonRays::normalize(n + RadeonRays::float3(cos(a) * sinTheta, sin(a) * sinTheta, u));
@@ -120,15 +108,21 @@ namespace octoon
 		return TangentToWorld(H, n);
 	}
 
-	RadeonRays::float3 bsdf(const RadeonRays::float3& V, const RadeonRays::float3& N, float roughness, float ior, std::uint32_t i)
+	RadeonRays::float3 bsdf(const RadeonRays::float3& V, const RadeonRays::float3& N, float roughness, float ior, const RadeonRays::float2& Xi)
 	{
 		if (ior > 1.0f)
 			return RadeonRays::normalize(refract(V, N, ior));
 
 		if (roughness < 1.0f)
-			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, i);
+			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, Xi);
 
-		return CosineDirection(N);
+		return CosineDirection(N, Xi);
+	}
+
+	float rand(std::uint64_t seed)
+	{
+		float hash = (std::sin(seed) * 43758.5453123f);
+		return hash - std::floor(hash);
 	}
 }
 

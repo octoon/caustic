@@ -10,6 +10,8 @@
 #include <thread>
 #include <future>
 
+#include "halton_enum.h"
+#include "halton_sampler.h"
 #include "tiny_obj_loader.h"
 
 namespace octoon
@@ -21,6 +23,7 @@ namespace octoon
 		std::vector<RadeonRays::ray> rays;
 		std::vector<RadeonRays::Intersection> hits;
 		std::vector<RadeonRays::float3> samples;
+		std::vector<RadeonRays::float2> random;
 
 		RadeonRays::Buffer* fr_rays;
 		RadeonRays::Buffer* fr_shadowrays;
@@ -52,6 +55,7 @@ namespace octoon
 	private:
 		void GenerateWorkspace(std::uint32_t numEstimate);
 
+		void GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 		void GenerateRays(std::uint32_t frame) noexcept;
 		void GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
@@ -85,6 +89,9 @@ namespace octoon
 		std::vector<RadeonRays::float3> hdr_;
 
 		RenderData renderData_;
+
+		std::unique_ptr<Halton_enum> haltonEnum_;
+		std::unique_ptr<Halton_sampler> haltonSampler_;
 
 		std::vector<tinyobj::shape_t> scene_;
 		std::vector<tinyobj::material_t> materials_;
