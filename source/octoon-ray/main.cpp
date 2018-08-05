@@ -84,8 +84,8 @@ int main(int argc, const char* argv[])
 			std::vector<std::future<std::uint32_t>> queues;
 
 			std::uint16_t tileSize = 54;
-			std::uint16_t tileNumsX = width / tileSize;
-			std::uint16_t tileNumsY = height / tileSize;
+			std::uint16_t tileNumsX = (width + tileSize - 1) / tileSize;
+			std::uint16_t tileNumsY = (height + tileSize - 1) / tileSize;
 
 			for (std::int32_t y = 0; y < tileNumsX * tileNumsY; y++)
 			{
@@ -115,6 +115,7 @@ int main(int argc, const char* argv[])
 				glfwSwapBuffers(window);
 			}
 		}
+		dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
 	}
 
 exit:

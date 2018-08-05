@@ -28,8 +28,8 @@ namespace octoon
 	{
 		width_ = w;
 		height_ = h;
-		tileWidth_ = width_ / tileSize_;
-		tileHeight_ = height_ / tileSize_;
+		tileWidth_ = (width_ + tileSize_ - 1) / tileSize_;
+		tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
  		thread_ = std::thread(std::bind(&MonteCarloThread::thread, this));
 	}
 
@@ -37,8 +37,8 @@ namespace octoon
 	MonteCarloThread::setTileSize(std::uint32_t size) noexcept
 	{
 		tileSize_ = size;
-		tileWidth_ = width_ / tileSize_;
-		tileHeight_ = height_ / tileSize_;
+		tileWidth_ = (width_ + tileSize_ - 1) / tileSize_;
+		tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
 	}
 
 	std::uint32_t
