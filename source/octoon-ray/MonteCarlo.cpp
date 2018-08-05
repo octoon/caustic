@@ -105,6 +105,7 @@ namespace octoon
 			if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
 			{
 				deviceidx = idx;
+
 				//break;
 			}
 
@@ -203,7 +204,7 @@ namespace octoon
 	MonteCarlo::GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < tileNums_; ++i)
+		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
 			/*auto sx = haltonSampler_->sample(0, frame);
 			auto sy = haltonSampler_->sample(1, frame);*/
@@ -224,7 +225,7 @@ namespace octoon
 		float ystep = 2.0f / (float)this->height_;
 
 #pragma omp parallel for
-		for (std::int32_t i = 0; i < tileNums_; ++i)
+		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
 			auto ix = offset.x + i % size.x;
 			auto iy = offset.y + i / size.x;
