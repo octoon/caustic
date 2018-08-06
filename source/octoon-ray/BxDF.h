@@ -65,9 +65,9 @@ namespace octoon
 			float FdV = 1 + (Fd90 - 1) * std::pow(1 - nv, 5);
 			float FdL = 1 + (Fd90 - 1) * std::pow(1 - nl, 5);
 
-			float brdf = FdV * FdL * (1.0f - 0.3333f * roughness);
+			float fresnel = FdV * FdL * (1.0f - 0.3333f * roughness);
 
-			return RadeonRays::float3(brdf, brdf, brdf);
+			return RadeonRays::float3(fresnel, fresnel, fresnel);
 		}
 
 		return 0;
