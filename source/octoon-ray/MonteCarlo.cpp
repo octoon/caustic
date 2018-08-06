@@ -30,7 +30,7 @@ namespace octoon
 		: camera_(0.f, 1.f, 3.f, 1000.f)
 		, numBounces_(6)
 		, tileNums_(0)
-		, skyColor_(1.0f, 1.0f, 1.0f)
+		, skyColor_(2.0f, 2.0f, 2.0f)
 		, light_(-0.01f, 1.9f, 0.1f)
 		, width_(0)
 		, height_(0)
