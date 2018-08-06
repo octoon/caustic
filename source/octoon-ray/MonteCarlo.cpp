@@ -370,17 +370,16 @@ namespace octoon
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
-			auto& hit = renderData_.hits[i];
-			auto& sample = renderData_.samples[i];
-
-			int shape_id = hit.shapeid;
-			int prim_id = hit.primid;
-
-			if (shape_id == RadeonRays::kNullId || prim_id == RadeonRays::kNullId)
+			if (!renderData_.rays[i].IsActive())
 				continue;
 
-			tinyobj::mesh_t& mesh = scene_[shape_id].mesh;
-			tinyobj::material_t& mat = materials_[mesh.material_ids[prim_id]];
+			auto& hit = renderData_.hits[i];
+			auto& sample = renderData_.samples[i];
+			if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
+				continue;
+
+			tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
+			tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
 
 			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 			{
@@ -405,6 +404,9 @@ namespace octoon
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
+			if (!renderData_.rays[i].IsActive())
+				continue;
+
 			auto& hit = renderData_.hits[i];
 			auto& sample = renderData_.samples[i];
 
@@ -419,6 +421,7 @@ namespace octoon
 					sample.x *= mat.emission[0] * atten;
 					sample.y *= mat.emission[1] * atten;
 					sample.z *= mat.emission[2] * atten;
+					sample *= renderData_.weights[i];
 				}
 				else
 				{
@@ -436,6 +439,7 @@ namespace octoon
 			else
 			{
 				sample *= skyColor_;
+				sample *= renderData_.weights[i];
 			}
 		}
 	}
