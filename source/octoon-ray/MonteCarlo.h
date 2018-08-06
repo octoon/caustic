@@ -24,6 +24,7 @@ namespace octoon
 		std::vector<RadeonRays::Intersection> hits;
 		std::vector<RadeonRays::float3> samples;
 		std::vector<RadeonRays::float2> random;
+		std::vector<RadeonRays::float3> weights;
 
 		RadeonRays::Buffer* fr_rays;
 		RadeonRays::Buffer* fr_shadowrays;
