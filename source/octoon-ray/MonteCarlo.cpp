@@ -311,7 +311,7 @@ namespace octoon
 					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]), roughness, ior);
 
 					renderData_.rays[i].d = L;
-					renderData_.rays[i].o = ro + L * 1e-3f;
+					renderData_.rays[i].o = ro + L * 1e-5f;
 					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
 					renderData_.rays[i].SetTime(0.0f);
 					renderData_.rays[i].SetMask(-1);
