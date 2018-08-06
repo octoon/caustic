@@ -166,7 +166,7 @@ namespace octoon
 			it.emission[1] /= (4 * PI / it.illum);
 			it.emission[2] /= (4 * PI / it.illum);
 
-			it.shininess = saturate(it.shininess);
+			it.shininess = std::max(1e-3f, saturate(it.shininess));
 		}
 
 		return res != "" ? false : true;
@@ -335,13 +335,13 @@ namespace octoon
 					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]), roughness, ior);
 
 					auto& ray = renderData_.rays[i];
-					ray.d = L;
-					ray.o = ro + L * 1e-5f;
-					ray.SetMaxT(std::numeric_limits<float>::max());
-					ray.SetTime(0.0f);
-					ray.SetMask(-1);
-					ray.SetActive(true);
-					ray.SetDoBackfaceCulling(ior > 1.0f ? false : true);
+					renderData_.rays[i].d = L;
+					renderData_.rays[i].o = ro + L * 1e-5f;
+					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
+					renderData_.rays[i].SetTime(0.0f);
+					renderData_.rays[i].SetMask(-1);
+					renderData_.rays[i].SetActive(true);
+					renderData_.rays[i].SetDoBackfaceCulling(ior > 1.0f ? false : true);
 				}
 			}
 			else

@@ -27,9 +27,7 @@ namespace octoon
 
 	inline RadeonRays::float3 reflect(const RadeonRays::float3& L, const RadeonRays::float3& N) noexcept
 	{
-		float bias = 0.18f;
-		float nl = RadeonRays::dot(L, N);
-		return L - 2 * (sign(nl) * lerp(bias, 1.0f, std::abs(nl)) * N);
+		return L - 2 * (RadeonRays::dot(L, N) * N);
 	}
 
 	inline RadeonRays::float3 refract(const RadeonRays::float3& L, const RadeonRays::float3& N, float ior)
@@ -82,18 +80,23 @@ namespace octoon
 		{
 			auto H = RadeonRays::normalize(L + V);
 
-			float nv = saturate(RadeonRays::dot(V, N));
+			float nv = std::abs(RadeonRays::dot(V, N)) + 0.1f;
 			float vh = saturate(RadeonRays::dot(V, L));
 			float nh = saturate(RadeonRays::dot(H, N));
 
-			float Gv = nl * (nv * (1 - roughness) + roughness);
-			float Gl = nv * (nl * (1 - roughness) + roughness);
+			float m = roughness * roughness;
+			float m2 = m * m;
+			float spec = (nh * m2 - nh) * nh + 1.0f;
+			float D = m2 / (spec * spec) * PI;
+
+			float Gv = nl * (nv * (1 - m) + m);
+			float Gl = nv * (nl * (1 - m) + m);
 			float G = 0.5 / (Gv + Gl);
 
 			float Fc = std::pow(1 - vh, 5);
 			RadeonRays::float3 F = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
 
-			return F * G * (4 * vh / nh) * nl;
+			return F * G * nl * (4 * nl * nv);
 		}
 
 		return 0;
