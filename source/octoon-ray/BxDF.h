@@ -102,6 +102,37 @@ namespace octoon
 		return 0;
 	}
 
+	RadeonRays::float3 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& specular, float roughness)
+	{
+		float nl = std::abs(RadeonRays::dot(L, N));
+		if (nl > 0)
+		{
+			auto H = RadeonRays::normalize(L + V);
+
+			float nv = std::abs(RadeonRays::dot(V, N)) + 0.1f;
+			float vh = saturate(RadeonRays::dot(V, L));
+			float nh = saturate(RadeonRays::dot(H, N));
+
+			float m = roughness * roughness;
+			float m2 = m * m;
+			float spec = (nh * m2 - nh) * nh + 1.0f;
+			float D = m2 / (spec * spec) * PI;
+
+			float Gv = nl * (nv * (1 - m) + m);
+			float Gl = nv * (nl * (1 - m) + m);
+			float G = 0.5 / (Gv + Gl);
+
+			float Fc = std::pow(1 - nv, 5);
+			RadeonRays::float3 F0 = specular * 0.04f;
+			RadeonRays::float3 Fr = F0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
+			RadeonRays::float3 Ft = RadeonRays::float3(1.0f, 1.0f, 1.0f) - Fr;
+
+			return Ft * G * nl * (4 * nl * nv);
+		}
+
+		return 0;
+	}
+
 	RadeonRays::float3 TangentToWorld(const RadeonRays::float3& H, const RadeonRays::float3& N)
 	{
 		RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0, 0, 1) : RadeonRays::float3(1, 0, 0);
@@ -127,10 +158,13 @@ namespace octoon
 		return TangentToWorld(H, n);
 	}
 
-	RadeonRays::float3 bsdf(const RadeonRays::float3& V, const RadeonRays::float3& N, float roughness, float ior, const RadeonRays::float2& Xi)
+	RadeonRays::float3 bsdf(const RadeonRays::float3& V, RadeonRays::float3 N, float roughness, float ior, const RadeonRays::float2& Xi)
 	{
+		if (RadeonRays::dot(N, V) > 0.0f)
+			N = -N;
+
 		if (ior > 1.0f)
-			return LobeDirection(RadeonRays::normalize(refract(V, N, 1.0f / ior)), roughness, Xi);
+			return RadeonRays::normalize(refract(V, N, 1.0f / ior));
 
 		if (roughness < 1.0f)
 			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, Xi);
@@ -141,7 +175,7 @@ namespace octoon
 	RadeonRays::float3 bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& f0, float roughness, float ior)
 	{
 		if (ior > 1.0f)
-			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
+			return SpecularBTDF_GGX(N, L, -V, f0, roughness);
 
 		if (roughness < 1.0f)
 			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
