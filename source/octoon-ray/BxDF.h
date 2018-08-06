@@ -12,7 +12,7 @@ namespace octoon
 
 	constexpr float saturate(float t) noexcept
 	{
-		return std::max(1.0f, std::max(0.0f, t));
+		return std::min(1.0f, std::max(0.0f, t));
 	}
 
 	constexpr float sign(float t) noexcept
