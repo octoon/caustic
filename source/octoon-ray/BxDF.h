@@ -6,9 +6,20 @@
 
 namespace octoon
 {
-	inline RadeonRays::float3 reflect(const RadeonRays::float3& I, const RadeonRays::float3& N) noexcept
+	inline float sign(const float t) noexcept
 	{
-		return I - 2 * (RadeonRays::dot(I, N) * N);
+		return (t > 0) ? 1.0f : -1.0f;
+	}
+
+	inline float lerp(float t1, float t2, float t) noexcept
+	{
+		return t1 * (1.0f - t) + t2 * t;
+	}
+
+	inline RadeonRays::float3 reflect(const RadeonRays::float3& L, const RadeonRays::float3& N) noexcept
+	{
+		float nl = RadeonRays::dot(L, N);
+		return L - 2 * (sign(nl) * std::max(std::abs(nl), 0.2f) * N);
 	}
 
 	inline RadeonRays::float3 refract(const RadeonRays::float3& I, const RadeonRays::float3& normal, float ior)
