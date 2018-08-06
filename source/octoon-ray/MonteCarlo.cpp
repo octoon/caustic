@@ -232,6 +232,12 @@ namespace octoon
 	void
 	MonteCarlo::GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
+		auto rand = [](std::uint32_t seed)
+		{
+			auto s = sin(seed) * 43758.5453123;
+			return s - std::floor(s);
+		};
+
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
@@ -240,6 +246,11 @@ namespace octoon
 
 			auto sx = haltonSampler_->sample(ix % 4, frame);
 			auto sy = haltonSampler_->sample(iy % 4, frame);
+
+			sx += rand(ix * iy);
+			sy += rand(ix ^ iy);
+			sx = sx - std::floor(sx);
+			sy = sy - std::floor(sy);
 
 			this->renderData_.random[i] = RadeonRays::float2(sx, sy);
 		}
