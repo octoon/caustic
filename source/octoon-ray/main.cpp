@@ -84,7 +84,9 @@ int main(int argc, const char* argv[])
 
 		std::time_t begin_time = std::clock();
 
-		for (std::uint32_t frame = 1; frame < 10000; frame++)
+		std::uint32_t frame_num = 1000;
+
+		for (std::uint32_t frame = 1; frame < frame_num; frame++)
 		{
 			std::uint16_t tileSize = 512;
 			std::uint16_t tileNumsX = width / tileSize + (width % tileSize > 0 ? 1 : 0);
@@ -120,13 +122,18 @@ int main(int argc, const char* argv[])
 			}
 
 			std::time_t cur_time = std::clock();
+			float elapsed_time = (cur_time - begin_time) / 1000.f;
+			float average_time_per_pass = elapsed_time / frame;
+			float time_remaining = (frame_num - frame) * average_time_per_pass;
+
 			std::cout << "pass: " << frame << std::endl;
-			std::cout << "total time: " << (cur_time - begin_time)/1000.f << std::endl;
-			std::cout << "average time: " << (cur_time - begin_time) / 1000.f / frame << std::endl;
+			std::cout << "elapsed time: " << elapsed_time << std::endl;
+			std::cout << "average time per pass: " << average_time_per_pass << std::endl;
+			std::cout << "time remaining: " << time_remaining << std::endl;
 		}
 
 		system("pause");
-		dumpTGA("C:/Users/Administrator/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
+		dumpTGA("C:/Users/WangJun/Desktop/test.tga", (std::uint8_t*)engine.data(), width, height, 4);
 	}
 
 exit:
