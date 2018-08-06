@@ -18,8 +18,9 @@ namespace octoon
 
 	inline RadeonRays::float3 reflect(const RadeonRays::float3& L, const RadeonRays::float3& N) noexcept
 	{
+		float bias = 0.18f;
 		float nl = RadeonRays::dot(L, N);
-		return L - 2 * (sign(nl) * std::max(std::abs(nl), 0.2f) * N);
+		return L - 2 * (sign(nl) * lerp(bias, 1.0f, std::abs(nl)) * N);
 	}
 
 	inline RadeonRays::float3 refract(const RadeonRays::float3& L, const RadeonRays::float3& N, float ior)
