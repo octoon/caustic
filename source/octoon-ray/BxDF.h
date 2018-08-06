@@ -1,7 +1,6 @@
 #ifndef OCTOON_BxDF
 #define OCTOON_BxDF
 
-#include <radeon_rays.h>
 #include "Hammersley.h"
 
 namespace octoon
@@ -140,12 +139,6 @@ namespace octoon
 			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
 
 		return DiffuseBRDF(N, L, -V, roughness);
-	}
-
-	float rand(std::uint64_t seed)
-	{
-		float hash = (std::sin(seed) * 43758.5453123f);
-		return hash - std::floor(hash);
 	}
 }
 

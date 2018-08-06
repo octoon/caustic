@@ -1,7 +1,7 @@
 #ifndef OCTOON_HAMMERSLEY
 #define OCTOON_HAMMERSLEY
 
-#include <radeon_rays.h>
+#include <algorithm>
 
 namespace octoon
 {
