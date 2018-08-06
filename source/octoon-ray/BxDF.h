@@ -22,13 +22,14 @@ namespace octoon
 		return L - 2 * (sign(nl) * std::max(std::abs(nl), 0.2f) * N);
 	}
 
-	inline RadeonRays::float3 refract(const RadeonRays::float3& I, const RadeonRays::float3& normal, float ior)
+	inline RadeonRays::float3 refract(const RadeonRays::float3& L, const RadeonRays::float3& N, float ior)
 	{
-		float dt = RadeonRays::dot(I, normal);
+		float dt = RadeonRays::dot(L, N);
 		float s2 = 1.0f - dt * dt;
 		float st2 = ior * ior * s2;
 		float cost2 = 1 - st2;
-		return (I - normal * dt) * ior - normal * std::sqrt(cost2);
+		assert(cost2 > 0.0f);
+		return (L - N * dt) * ior - N * std::sqrt(cost2);
 	}
 
 	float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
