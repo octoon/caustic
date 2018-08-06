@@ -311,7 +311,7 @@ namespace octoon
 					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]), roughness, ior);
 
 					renderData_.rays[i].d = L;
-					renderData_.rays[i].o = ro + L * 1e-5f;
+					renderData_.rays[i].o = ro + L * 1e-3f;
 					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
 					renderData_.rays[i].SetTime(0.0f);
 					renderData_.rays[i].SetMask(-1);
@@ -534,10 +534,6 @@ namespace octoon
 			auto index = iy * this->width_ + ix;
 
 			auto& hdr = hdr_[index];
-			assert(!std::isnan(hdr.x));
-			assert(!std::isnan(hdr.y));
-			assert(!std::isnan(hdr.z));
-
 			assert(std::isfinite(hdr.x));
 			assert(std::isfinite(hdr.y));
 			assert(std::isfinite(hdr.z));
