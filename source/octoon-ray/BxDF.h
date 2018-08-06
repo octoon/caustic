@@ -5,6 +5,11 @@
 
 namespace octoon
 {
+	inline float fract(float t) noexcept
+	{
+		return t - std::floor(t);
+	}
+
 	constexpr float saturate(float t) noexcept
 	{
 		return std::max(1.0f, std::max(0.0f, t));

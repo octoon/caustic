@@ -234,8 +234,7 @@ namespace octoon
 	{
 		auto rand = [](std::uint32_t seed)
 		{
-			auto s = sin(seed) * 43758.5453123;
-			return s - std::floor(s);
+			return fract(std::sin(seed) * 43758.5453123);
 		};
 
 #pragma omp parallel for
@@ -247,11 +246,11 @@ namespace octoon
 			auto sx = haltonSampler_->sample(0, frame);
 			auto sy = haltonSampler_->sample(1, frame);
 
-			sx += rand(ix * iy);
-			sy += rand(ix ^ iy);
+			sx += rand(ix * iy - 64.340622f);
+			sy += rand(ix * iy - 72.465622f);
 
-			sx = sx - std::floor(sx);
-			sy = sy - std::floor(sy);
+			sx = fract(sx);
+			sy = fract(sy);
 
 			this->renderData_.random[i] = RadeonRays::float2(sx, sy);
 		}
