@@ -5,12 +5,17 @@
 
 namespace octoon
 {
-	inline float sign(const float t) noexcept
+	constexpr float saturate(float t) noexcept
+	{
+		return std::max(1.0f, std::max(0.0f, t));
+	}
+
+	constexpr float sign(float t) noexcept
 	{
 		return (t > 0) ? 1.0f : -1.0f;
 	}
 
-	inline float lerp(float t1, float t2, float t) noexcept
+	constexpr float lerp(float t1, float t2, float t) noexcept
 	{
 		return t1 * (1.0f - t) + t2 * t;
 	}
@@ -43,14 +48,6 @@ namespace octoon
 		return attenuation;
 	}
 
-	float SmithJointApprox(float a2, float NoV, float NoL)
-	{
-		float a = sqrt(a2);
-		float Vis_SmithV = NoL * (NoV * (1 - a) + a);
-		float Vis_SmithL = NoV * (NoL * (1 - a) + a);
-		return 0.5f * 1.0f / (Vis_SmithV + Vis_SmithL);
-	}
-
 	RadeonRays::float3 DiffuseBRDF(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
 	{
 		float nl = RadeonRays::dot(L, N);
@@ -59,13 +56,13 @@ namespace octoon
 			auto H = RadeonRays::normalize(L + V);
 
 			float vh = std::max(0.0f, RadeonRays::dot(V, L));
-			float nv = std::max(0.0f, RadeonRays::dot(V, N));
+			float nv = std::max(0.1f, RadeonRays::dot(V, N));
 
-			float FD90 = (0.5f + 2 * vh * vh) * roughness;
-			float FdV = 1 + (FD90 - 1) * std::pow(1 - nv, 5);
-			float FdL = 1 + (FD90 - 1) * std::pow(1 - nl, 5);
+			float Fd90 = (0.5f + 2 * vh * vh) * roughness;
+			float FdV = 1 + (Fd90 - 1) * std::pow(1 - nv, 5);
+			float FdL = 1 + (Fd90 - 1) * std::pow(1 - nl, 5);
 
-			float brdf = std::min(1.0f, std::max(0.0f, FdV * FdL * (1.0f - 0.3333f * roughness)));
+			float brdf = FdV * FdL * (1.0f - 0.3333f * roughness);
 
 			return RadeonRays::float3(brdf, brdf, brdf);
 		}
@@ -80,15 +77,18 @@ namespace octoon
 		{
 			auto H = RadeonRays::normalize(L + V);
 
-			float nv = std::max(1.0f, std::max(0.0f, RadeonRays::dot(V, N)));
-			float vh = std::max(1.0f, std::max(0.0f, RadeonRays::dot(V, L)));
-			float nh = std::max(1.0f, std::max(0.0f, RadeonRays::dot(H, N)));
+			float nv = saturate(RadeonRays::dot(V, N));
+			float vh = saturate(RadeonRays::dot(V, L));
+			float nh = saturate(RadeonRays::dot(H, N));
 
-			float G = SmithJointApprox(std::pow(roughness, 4), nv, nl);
+			float Gv = nl * (nv * (1 - roughness) + roughness);
+			float Gl = nv * (nl * (1 - roughness) + roughness);
+			float G = 0.5 / (Gv + Gl);
+
 			float Fc = std::pow(1 - vh, 5);
-			RadeonRays::float3 F = (1 - Fc) * f0 + RadeonRays::float3(Fc, Fc, Fc);
+			RadeonRays::float3 F = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
 
-			return std::min(1.0f, std::max(0.0f, nl * G * (4 * vh / nh))) * F;
+			return F * G * (4 * vh / nh) * nl;
 		}
 
 		return 0;
