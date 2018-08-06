@@ -101,14 +101,14 @@ namespace octoon
 
 	inline RadeonRays::float3 UniformSampleCone(const RadeonRays::float2& Xi, float CosThetaMax)
 	{
-		float Phi = 2 * PI * Xi.x;
-		float CosTheta = CosThetaMax * (1 - Xi.y) + Xi.y;
-		float SinTheta = fast_sqrt(1 - CosTheta * CosTheta);
+		float phi = 2 * PI * Xi.x;
+		float cosTheta = CosThetaMax * (1 - Xi.y) + Xi.y;
+		float sinTheta = fast_sqrt(1 - cosTheta * cosTheta);
 
 		RadeonRays::float3 H;
-		H.x = SinTheta * cos(Phi);
-		H.y = SinTheta * sin(Phi);
-		H.z = CosTheta;
+		H.x = sinTheta * fast_cos(phi);
+		H.y = sinTheta * fast_sin(phi);
+		H.z = cosTheta;
 		H.w = 1.0 / (2 * PI * (1 - CosThetaMax));
 
 		return H;
