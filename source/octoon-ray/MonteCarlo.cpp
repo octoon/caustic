@@ -2,6 +2,7 @@
 #include "Hammersley.h"
 #include "BxDF.h"
 #include <assert.h>
+#include <atomic>
 #include <CL/cl.h>
 
 namespace octoon
@@ -125,8 +126,8 @@ namespace octoon
 	bool
 	MonteCarlo::init_data()
 	{
-		std::string basepath = "../Resources/CornellBoxTwoSpheres/";
-		std::string filename = basepath + "two_sphere_cornell.obj";
+		std::string basepath = "../Resources/CornellBox/";
+		std::string filename = basepath + "orig.objm";
 		std::string res = LoadObj(scene_, materials_, filename.c_str(), basepath.c_str());
 
 		return res != "" ? false : true;
@@ -203,13 +204,14 @@ namespace octoon
 	void
 	MonteCarlo::GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
+		static std::atomic_uint64_t seed = 0;
+
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
 			/*auto sx = haltonSampler_->sample(0, frame);
 			auto sy = haltonSampler_->sample(1, frame);*/
 
-			static int seed = 0;
 			this->renderData_.random[i] = RadeonRays::float2(rand(seed), rand(seed++));
 		}
 	}

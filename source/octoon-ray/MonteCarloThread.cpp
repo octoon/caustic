@@ -7,7 +7,7 @@ namespace octoon
 {
 	MonteCarloThread::MonteCarloThread() noexcept
 		: isQuitRequest_(false)
-		, tileSize_(64)
+		, tileSize_(512)
 	{
 	}
 
