@@ -100,10 +100,11 @@ int main(int argc, const char* argv[])
 
 			for (auto& it : queues)
 			{
+				it.wait();
+
 				if (::glfwWindowShouldClose(window))
 					goto exit;
-
-				it.get();
+				
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, engine.data());
 
 				int w = 0, h = 0;
@@ -126,10 +127,11 @@ int main(int argc, const char* argv[])
 			float average_time_per_pass = elapsed_time / frame;
 			float time_remaining = (frame_num - frame) * average_time_per_pass;
 
-			std::cout << "pass: " << frame << std::endl;
-			std::cout << "elapsed time: " << elapsed_time << std::endl;
-			std::cout << "average time per pass: " << average_time_per_pass << std::endl;
-			std::cout << "time remaining: " << time_remaining << std::endl;
+			std::system("cls");
+			std::cerr << "pass: " << frame << std::endl;
+			std::cerr << "elapsed time: " << elapsed_time << std::endl;
+			std::cerr << "average time per pass: " << average_time_per_pass << std::endl;
+			std::cerr << "time remaining: " << time_remaining << std::endl;
 		}
 
 		system("pause");

@@ -71,7 +71,6 @@ namespace octoon
 		width_ = w;
 		height_ = h;
 
-		haltonEnum_ = std::make_unique<Halton_enum>(w, h);
 		haltonSampler_ = std::make_unique<Halton_sampler>();
 		haltonSampler_->init_faure();
 
@@ -103,16 +102,25 @@ namespace octoon
 			RadeonRays::DeviceInfo devinfo;
 			RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
 
-			if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
-			{
-				deviceidx = idx;
-
-				//break;
-			}
-
 			if (devinfo.type == RadeonRays::DeviceInfo::kGpu)
 			{
 				deviceidx = idx;
+				break;
+			}
+		}
+
+		if (deviceidx == -1)
+		{
+			for (auto idx = 0U; idx < RadeonRays::IntersectionApi::GetDeviceCount(); ++idx)
+			{
+				RadeonRays::DeviceInfo devinfo;
+				RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
+
+				if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
+				{
+					deviceidx = idx;
+					break;
+				}
 			}
 		}
 
@@ -126,8 +134,8 @@ namespace octoon
 	bool
 	MonteCarlo::init_data()
 	{
-		std::string basepath = "../Resources/CornellTwoSphere/";
-		std::string filename = basepath + "two_sphere_cornell.obj";
+		std::string basepath = "../Resources/CornellBox/";
+		std::string filename = basepath + "orig.objm";
 		std::string res = LoadObj(scene_, materials_, filename.c_str(), basepath.c_str());
 
 		for (auto& it : materials_)
@@ -221,10 +229,13 @@ namespace octoon
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
-			/*auto sx = haltonSampler_->sample(0, frame);
-			auto sy = haltonSampler_->sample(1, frame);*/
+			auto ix = offset.x + i % size.x;
+			auto iy = offset.y + i / size.x;
 
-			this->renderData_.random[i] = RadeonRays::float2(rand(seed), rand(seed++));
+			auto sx = haltonSampler_->sample(ix % 4, frame);
+			auto sy = haltonSampler_->sample(iy % 4, frame);
+
+			this->renderData_.random[i] = RadeonRays::float2(sx, sy);
 		}
 	}
 
@@ -244,8 +255,8 @@ namespace octoon
 			auto ix = offset.x + i % size.x;
 			auto iy = offset.y + i / size.x;
 
-			float x = xstep * ix - 1.0f + (renderData_.random[i].x * 2 - 1) / (float)this->width_;
-			float y = ystep * iy + renderData_.random[i].y / (float)this->height_;
+			float x = xstep * ix + (renderData_.random[i].x * 2 - 1) / (float)this->width_ - 1.0f;
+			float y = ystep * iy + (renderData_.random[i].y / (float)this->height_);
 			float z = 1.0f;
 
 			rays[i].o = this->camera_;

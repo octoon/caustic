@@ -9,7 +9,6 @@
 #include <queue>
 #include <thread>
 #include <future>
-
 #include "halton_enum.h"
 #include "halton_sampler.h"
 #include "tiny_obj_loader.h"
@@ -91,7 +90,6 @@ namespace octoon
 
 		RenderData renderData_;
 
-		std::unique_ptr<Halton_enum> haltonEnum_;
 		std::unique_ptr<Halton_sampler> haltonSampler_;
 
 		std::vector<tinyobj::shape_t> scene_;
