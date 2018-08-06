@@ -244,11 +244,12 @@ namespace octoon
 			auto ix = offset.x + i % size.x;
 			auto iy = offset.y + i / size.x;
 
-			auto sx = haltonSampler_->sample(ix % 4, frame);
-			auto sy = haltonSampler_->sample(iy % 4, frame);
+			auto sx = haltonSampler_->sample(0, frame);
+			auto sy = haltonSampler_->sample(1, frame);
 
 			sx += rand(ix * iy);
 			sy += rand(ix ^ iy);
+
 			sx = sx - std::floor(sx);
 			sy = sy - std::floor(sy);
 
