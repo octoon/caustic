@@ -147,6 +147,10 @@ namespace octoon
 			it.specular[0] = std::pow(it.specular[0], 2.2f) * it.illum;
 			it.specular[1] = std::pow(it.specular[1], 2.2f) * it.illum;
 			it.specular[2] = std::pow(it.specular[2], 2.2f) * it.illum;
+
+			it.emission[0] /= (4 * PI / it.illum);
+			it.emission[1] /= (4 * PI / it.illum);
+			it.emission[2] /= (4 * PI / it.illum);
 		}
 
 		return res != "" ? false : true;
@@ -224,8 +228,6 @@ namespace octoon
 	void
 	MonteCarlo::GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
-		static std::atomic_uint64_t seed = 0;
-
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
@@ -292,7 +294,11 @@ namespace octoon
 				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
 				tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
 
-				if (mat.emission[0] == 0.0f && mat.emission[1] == 0.0f && mat.emission[2] == 0.0f)
+				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+				{
+					std::memset(&renderData_.rays[i], 0, sizeof(RadeonRays::ray));
+				}
+				else
 				{
 					auto ior = mat.ior;
 					auto roughness = mat.shininess;
@@ -318,14 +324,10 @@ namespace octoon
 					renderData_.rays[i].SetActive(true);
 					renderData_.rays[i].SetDoBackfaceCulling(ior > 1.0f ? false : true);
 				}
-				else
-				{
-					renderData_.rays[i].SetActive(false);
-				}
 			}
 			else
 			{
-				renderData_.rays[i].SetActive(false);
+				std::memset(&renderData_.rays[i], 0, sizeof(RadeonRays::ray));
 			}
 		}
 
@@ -361,7 +363,7 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GatherFirstSampling(std::uint32_t& sampleCounter) noexcept
+	MonteCarlo::GatherFirstSampling(std::atomic_uint32_t& sampleCounter) noexcept
 	{
 		std::memset(renderData_.samples.data(), 0, sizeof(RadeonRays::float3) * this->renderData_.numEstimate);
 
@@ -391,9 +393,9 @@ namespace octoon
 				sample.x = mat.diffuse[0];
 				sample.y = mat.diffuse[1];
 				sample.z = mat.diffuse[2];
-			}
 
-			sampleCounter++;
+				sampleCounter++;
+			}
 		}
 	}
 
@@ -411,11 +413,12 @@ namespace octoon
 				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
 				tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
 
+				float atten = GetPhysicalLightAttenuation(renderData_.rays[i].o - ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
 				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
 				{
-					sample.x *= mat.emission[0];
-					sample.y *= mat.emission[1];
-					sample.z *= mat.emission[2];
+					sample.x *= mat.emission[0] * atten;
+					sample.y *= mat.emission[1] * atten;
+					sample.z *= mat.emission[2] * atten;
 				}
 				else
 				{
@@ -423,7 +426,6 @@ namespace octoon
 						sample *= 0.0f;
 					else
 					{
-						float atten = GetPhysicalLightAttenuation(renderData_.rays[i].o - ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
 						sample.x *= mat.diffuse[0] * atten;
 						sample.y *= mat.diffuse[1] * atten;
 						sample.z *= mat.diffuse[2] * atten;
@@ -468,7 +470,7 @@ namespace octoon
 
 			if (pass == 0)
 			{
-				std::uint32_t count = 0;
+				std::atomic_uint32_t count = 0;
 				this->GatherFirstSampling(count);
 
 				if (count == 0)
