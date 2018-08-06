@@ -101,7 +101,6 @@ namespace octoon
 	MonteCarloThread::thread() noexcept
 	{
 		pipeline_ = std::make_unique<octoon::MonteCarlo>(width_, height_);
-		pipeline_->setup(width_, height_);
 
 		while (!isQuitRequest_)
 		{

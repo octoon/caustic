@@ -394,9 +394,10 @@ namespace octoon
 						sample *= 0.0f;
 					else
 					{
-						sample.x *= mat.diffuse[0];// * renderData_.rays[i].d.w;
-						sample.y *= mat.diffuse[1];// * renderData_.rays[i].d.w;
-						sample.z *= mat.diffuse[2];// * renderData_.rays[i].d.w;
+						float atten = GetPhysicalLightAttenuation(renderData_.rays[i].o - ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
+						sample.x *= mat.diffuse[0] * atten;
+						sample.y *= mat.diffuse[1] * atten;
+						sample.z *= mat.diffuse[2] * atten;
 					}
 				}
 			}
