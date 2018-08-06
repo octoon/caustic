@@ -242,12 +242,13 @@ namespace octoon
 		{
 			auto ix = offset.x + i % size.x;
 			auto iy = offset.y + i / size.x;
+			auto index = iy * this->width_ + ix;
 
 			auto sx = haltonSampler_->sample(0, frame);
 			auto sy = haltonSampler_->sample(1, frame);
 
-			sx += rand(ix * iy - 64.340622f);
-			sy += rand(ix * iy - 72.465622f);
+			sx += rand(index - 64.340622f);
+			sy += rand(index - 72.465622f);
 
 			sx = fract(sx);
 			sy = fract(sy);
