@@ -282,7 +282,7 @@ namespace octoon
 					}
 
 					renderData_.rays[i].d = L;
-					renderData_.rays[i].o = ro +L * 1e-6f;
+					renderData_.rays[i].o = ro + L * 1e-5f;
 					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
 					renderData_.rays[i].SetTime(0.0f);
 					renderData_.rays[i].SetMask(-1);

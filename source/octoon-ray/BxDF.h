@@ -11,13 +11,13 @@ namespace octoon
 		return I - 2 * (RadeonRays::dot(I, N) * N);
 	}
 
-	inline RadeonRays::float3 refract(const RadeonRays::float3& I, const RadeonRays::float3& normal, float refractRatio)
+	inline RadeonRays::float3 refract(const RadeonRays::float3& I, const RadeonRays::float3& normal, float ior)
 	{
 		float dt = RadeonRays::dot(I, normal);
 		float s2 = 1.0f - dt * dt;
-		float st2 = refractRatio * refractRatio * s2;
+		float st2 = ior * ior * s2;
 		float cost2 = 1 - st2;
-		return (I - normal * dt) * refractRatio - normal * std::sqrt(cost2);
+		return (I - normal * dt) * ior - normal * std::sqrt(cost2);
 	}
 
 	float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
@@ -111,7 +111,7 @@ namespace octoon
 	RadeonRays::float3 bsdf(const RadeonRays::float3& V, const RadeonRays::float3& N, float roughness, float ior, const RadeonRays::float2& Xi)
 	{
 		if (ior > 1.0f)
-			return RadeonRays::normalize(refract(V, N, ior));
+			return LobeDirection(RadeonRays::normalize(refract(V, N, 1.0f / ior)), roughness, Xi);
 
 		if (roughness < 1.0f)
 			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, Xi);
