@@ -85,9 +85,19 @@ namespace octoon
 	MonteCarlo::init_Gbuffers(std::uint32_t, std::uint32_t h) noexcept
 	{
 		auto allocSize = width_ * height_;
+		auto rand = [](std::uint32_t seed) { return fract(std::sin(seed) * 43758.5453123); };
 
 		ldr_.resize(allocSize);
 		hdr_.resize(allocSize);
+		random_.resize(allocSize);
+
+#pragma omp parallel for
+		for (std::int32_t i = 0; i < allocSize; ++i)
+		{
+			float sx = rand(i - 64.340622f);
+			float sy = rand(i - 72.465622f);
+			random_[i] = RadeonRays::float2(sx, sy);
+		}
 
 		return true;
 	}
@@ -155,6 +165,8 @@ namespace octoon
 			it.emission[0] /= (4 * PI / it.illum);
 			it.emission[1] /= (4 * PI / it.illum);
 			it.emission[2] /= (4 * PI / it.illum);
+
+			it.shininess = saturate(it.shininess);
 		}
 
 		return res != "" ? false : true;
@@ -232,11 +244,6 @@ namespace octoon
 	void
 	MonteCarlo::GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 	{
-		auto rand = [](std::uint32_t seed)
-		{
-			return fract(std::sin(seed) * 43758.5453123);
-		};
-
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
@@ -244,14 +251,8 @@ namespace octoon
 			auto iy = offset.y + i / size.x;
 			auto index = iy * this->width_ + ix;
 
-			auto sx = haltonSampler_->sample(0, frame);
-			auto sy = haltonSampler_->sample(1, frame);
-
-			sx += rand(index - 64.340622f);
-			sy += rand(index - 72.465622f);
-
-			sx = fract(sx);
-			sy = fract(sy);
+			float sx = fract(haltonSampler_->sample(0, frame) + random_[index].x);
+			float sy = fract(haltonSampler_->sample(1, frame) + random_[index].y);
 
 			this->renderData_.random[i] = RadeonRays::float2(sx, sy);
 		}
@@ -277,14 +278,15 @@ namespace octoon
 			float y = ystep * iy + (renderData_.random[i].y / (float)this->height_);
 			float z = 1.0f;
 
-			rays[i].o = this->camera_;
-			rays[i].d = RadeonRays::float3((x - this->camera_.x) * width_ / height_, y - this->camera_.y, z - this->camera_.z);
-			rays[i].d.normalize();
-			rays[i].SetMaxT(std::numeric_limits<float>::max());
-			rays[i].SetTime(0.0f);
-			rays[i].SetMask(-1);
-			rays[i].SetActive(true);
-			rays[i].SetDoBackfaceCulling(true);
+			auto& ray = rays[i];
+			ray.o = this->camera_;
+			ray.d = RadeonRays::float3((x - this->camera_.x) * width_ / height_, y - this->camera_.y, z - this->camera_.z);
+			ray.d.normalize();
+			ray.SetMaxT(std::numeric_limits<float>::max());
+			ray.SetTime(0.0f);
+			ray.SetMask(-1);
+			ray.SetActive(true);
+			ray.SetDoBackfaceCulling(true);
 		}
 
 		std::memcpy(renderData_.rays.data(), rays, sizeof(RadeonRays::ray) * this->renderData_.numEstimate);
@@ -327,18 +329,19 @@ namespace octoon
 						if (RadeonRays::dot(norm, L) < 0.0f)
 							L = -L;
 					}
-					
+
 					assert(std::isfinite(L.x + L.y + L.z));
 
 					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]), roughness, ior);
 
-					renderData_.rays[i].d = L;
-					renderData_.rays[i].o = ro + L * 1e-5f;
-					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
-					renderData_.rays[i].SetTime(0.0f);
-					renderData_.rays[i].SetMask(-1);
-					renderData_.rays[i].SetActive(true);
-					renderData_.rays[i].SetDoBackfaceCulling(ior > 1.0f ? false : true);
+					auto& ray = renderData_.rays[i];
+					ray.d = L;
+					ray.o = ro + L * 1e-5f;
+					ray.SetMaxT(std::numeric_limits<float>::max());
+					ray.SetTime(0.0f);
+					ray.SetMask(-1);
+					ray.SetActive(true);
+					ray.SetDoBackfaceCulling(ior > 1.0f ? false : true);
 				}
 			}
 			else

@@ -87,6 +87,7 @@ namespace octoon
 
 		std::vector<std::uint32_t> ldr_;
 		std::vector<RadeonRays::float3> hdr_;
+		std::vector<RadeonRays::float2> random_;
 
 		RenderData renderData_;
 
