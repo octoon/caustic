@@ -3,6 +3,7 @@
 #include "BxDF.h"
 #include <assert.h>
 #include <atomic>
+#include <string>
 #include <CL/cl.h>
 
 namespace octoon
@@ -104,6 +105,9 @@ namespace octoon
 
 			if (devinfo.type == RadeonRays::DeviceInfo::kGpu)
 			{
+				std::string info_name(devinfo.name);
+				if (info_name.find("Intel") != std::string::npos)
+					continue;
 				deviceidx = idx;
 				break;
 			}
