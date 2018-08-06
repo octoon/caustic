@@ -126,9 +126,20 @@ namespace octoon
 	bool
 	MonteCarlo::init_data()
 	{
-		std::string basepath = "../Resources/CornellBox/";
-		std::string filename = basepath + "orig.objm";
+		std::string basepath = "../Resources/CornellTwoSphere/";
+		std::string filename = basepath + "two_sphere_cornell.obj";
 		std::string res = LoadObj(scene_, materials_, filename.c_str(), basepath.c_str());
+
+		for (auto& it : materials_)
+		{
+			it.diffuse[0] = std::pow(it.diffuse[0], 2.2f) * it.illum;
+			it.diffuse[1] = std::pow(it.diffuse[1], 2.2f) * it.illum;
+			it.diffuse[2] = std::pow(it.diffuse[2], 2.2f) * it.illum;
+
+			it.specular[0] = std::pow(it.specular[0], 2.2f) * it.illum;
+			it.specular[1] = std::pow(it.specular[1], 2.2f) * it.illum;
+			it.specular[2] = std::pow(it.specular[2], 2.2f) * it.illum;
+		}
 
 		return res != "" ? false : true;
 	}
@@ -173,6 +184,7 @@ namespace octoon
 			renderData_.hits.resize(numEstimate);
 			renderData_.samples.resize(numEstimate);
 			renderData_.random.resize(numEstimate);
+			renderData_.weights.resize(numEstimate);
 
 			if (renderData_.fr_rays)
 				api_->DeleteBuffer(renderData_.fr_rays);
@@ -258,6 +270,8 @@ namespace octoon
 		RadeonRays::Event* e = nullptr;
 		api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
+		std::memset(renderData_.weights.data(), 0, sizeof(RadeonRays::float3) * this->renderData_.numEstimate);
+
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 		{
@@ -280,6 +294,10 @@ namespace octoon
 						if (RadeonRays::dot(norm, L) < 0.0f)
 							L = -L;
 					}
+					
+					assert(std::isfinite(L.x + L.y + L.z));
+
+					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]), roughness, ior);
 
 					renderData_.rays[i].d = L;
 					renderData_.rays[i].o = ro + L * 1e-5f;
@@ -398,6 +416,7 @@ namespace octoon
 						sample.x *= mat.diffuse[0] * atten;
 						sample.y *= mat.diffuse[1] * atten;
 						sample.z *= mat.diffuse[2] * atten;
+						sample *= renderData_.weights[i];
 					}
 				}
 			}

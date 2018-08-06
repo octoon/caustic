@@ -39,42 +39,44 @@ namespace octoon
 		return 0.5f * 1.0f / (Vis_SmithV + Vis_SmithL);
 	}
 
-	float DiffuseBRDF(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
+	RadeonRays::float3 DiffuseBRDF(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
 	{
 		float nl = RadeonRays::dot(L, N);
 		if (nl > 0)
 		{
 			auto H = RadeonRays::normalize(L + V);
 
-			float vh = RadeonRays::dot(V, L);
-			float nv = RadeonRays::dot(V, N);
+			float vh = std::max(0.0f, RadeonRays::dot(V, L));
+			float nv = std::max(0.0f, RadeonRays::dot(V, N));
 
 			float FD90 = (0.5f + 2 * vh * vh) * roughness;
 			float FdV = 1 + (FD90 - 1) * std::pow(1 - nv, 5);
 			float FdL = 1 + (FD90 - 1) * std::pow(1 - nl, 5);
 
-			return std::max(0.0f, FdV * FdL * (1.0f - 0.3333f * roughness));
+			float brdf = std::min(1.0f, std::max(0.0f, FdV * FdL * (1.0f - 0.3333f * roughness)));
+
+			return RadeonRays::float3(brdf, brdf, brdf);
 		}
 
 		return 0;
 	}
 
-	float SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
+	RadeonRays::float3 SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
 	{
 		float nl = RadeonRays::dot(L, N);
 		if (nl > 0)
 		{
 			auto H = RadeonRays::normalize(L + V);
 
-			float nv = RadeonRays::dot(V, N);
-			float vh = RadeonRays::dot(V, L);
-			float nh = RadeonRays::dot(H, N);
+			float nv = std::max(1.0f, std::max(0.0f, RadeonRays::dot(V, N)));
+			float vh = std::max(1.0f, std::max(0.0f, RadeonRays::dot(V, L)));
+			float nh = std::max(1.0f, std::max(0.0f, RadeonRays::dot(H, N)));
 
 			float G = SmithJointApprox(std::pow(roughness, 4), nv, nl);
 			float Fc = std::pow(1 - vh, 5);
-			float F = (1 - Fc) + Fc;
+			RadeonRays::float3 F = (1 - Fc) * f0 + RadeonRays::float3(Fc, Fc, Fc);
 
-			return std::max(0.0f, nl * F * G * (4 * vh / nh));
+			return std::min(1.0f, std::max(0.0f, nl * G * (4 * vh / nh))) * F;
 		}
 
 		return 0;
@@ -84,7 +86,7 @@ namespace octoon
 	{
 		RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0, 0, 1) : RadeonRays::float3(1, 0, 0);
 		RadeonRays::float3 X = RadeonRays::normalize(RadeonRays::cross(Y, N));
-		return X * H.x + cross(N, X) * H.y + N * H.z;
+		return RadeonRays::normalize(X * H.x + cross(N, X) * H.y + N * H.z);
 	}
 
 	RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, const RadeonRays::float2& Xi)
@@ -95,11 +97,8 @@ namespace octoon
 
 	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, const RadeonRays::float2& Xi)
 	{
-		float a = Xi.x * 2.0f * PI;
-		float u = Xi.y * 2.0f - 1.0f;
-		float sinTheta = std::sqrt(1.0f - u * u);
-
-		return RadeonRays::normalize(n + RadeonRays::float3(cos(a) * sinTheta, sin(a) * sinTheta, u));
+		auto H = CosineSampleHemisphere(Xi);
+		return TangentToWorld(H, n);
 	}
 
 	RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, std::uint32_t i, std::uint32_t samplesCount)
@@ -117,6 +116,17 @@ namespace octoon
 			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, Xi);
 
 		return CosineDirection(N, Xi);
+	}
+
+	RadeonRays::float3 bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& f0, float roughness, float ior)
+	{
+		if (ior > 1.0f)
+			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
+
+		if (roughness < 1.0f)
+			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
+
+		return DiffuseBRDF(N, L, -V, roughness);
 	}
 
 	float rand(std::uint64_t seed)

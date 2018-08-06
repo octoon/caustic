@@ -61,13 +61,19 @@ namespace octoon
 		return H;
 	}
 
-	inline RadeonRays::float3 HemisphereSampleUniform(const RadeonRays::float2& Xi)
+	inline RadeonRays::float3 UniformSampleCone(const RadeonRays::float2& Xi, float CosThetaMax)
 	{
-		float phi = Xi.y * 2.0f * PI;
-		float cosTheta = 1.0f - Xi.x;
-		float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
+		float Phi = 2 * PI * Xi.x;
+		float CosTheta = CosThetaMax * (1 - Xi.y) + Xi.y;
+		float SinTheta = std::sqrt(1 - CosTheta * CosTheta);
 
-		return RadeonRays::float3(std::cos(phi) * sinTheta, cosTheta, std::sin(phi) * sinTheta);
+		RadeonRays::float3 H;
+		H.x = SinTheta * cos(Phi);
+		H.y = SinTheta * sin(Phi);
+		H.z = CosTheta;
+		H.w = 1.0 / (2 * PI * (1 - CosThetaMax));
+
+		return H;
 	}
 
 	inline RadeonRays::float3 CosineSampleHemisphere(const RadeonRays::float2& Xi)
@@ -93,6 +99,22 @@ namespace octoon
 		float u = (1.0f - Xi.y) / (1.0f + (m2 - 1) * Xi.y);
 
 		return CosineSampleHemisphere(RadeonRays::float2(Xi.x, u));
+	}
+
+	inline RadeonRays::float3 ImportanceSampleBlinn(const RadeonRays::float2& Xi, float a2)
+	{
+		float phi = Xi.x * 2.0f * PI;
+
+		float n = 2 / a2 - 2;
+		float cosTheta = std::pow(Xi.y, 1 / (n + 1));
+		float sinTheta = std::sqrt(1 - cosTheta * cosTheta);
+
+		RadeonRays::float3 H;
+		H.x = sinTheta * cos(phi);
+		H.y = sinTheta * sin(phi);
+		H.z = cosTheta;
+
+		return H;
 	}
 }
 
