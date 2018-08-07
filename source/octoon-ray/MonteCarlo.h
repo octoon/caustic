@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <atomic>
+#include <memory>
 #include <radeon_rays.h>
 #include <radeon_rays_cl.h>
 
