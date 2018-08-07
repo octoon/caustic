@@ -3,14 +3,10 @@
 
 #include <algorithm>
 #include <vector>
+#include <atomic>
 #include <radeon_rays.h>
 #include <radeon_rays_cl.h>
-#include <stack>
-#include <queue>
-#include <thread>
-#include <future>
-#include "halton_enum.h"
-#include "halton_sampler.h"
+
 #include "tiny_obj_loader.h"
 
 namespace octoon
@@ -21,6 +17,7 @@ namespace octoon
 
 		std::vector<RadeonRays::ray> rays;
 		std::vector<RadeonRays::Intersection> hits;
+		std::vector<RadeonRays::Intersection> shadowHits;
 		std::vector<RadeonRays::float3> samples;
 		std::vector<RadeonRays::float2> random;
 		std::vector<RadeonRays::float3> weights;
@@ -87,11 +84,10 @@ namespace octoon
 
 		std::vector<std::uint32_t> ldr_;
 		std::vector<RadeonRays::float3> hdr_;
-		std::vector<RadeonRays::float2> random_;
 
 		RenderData renderData_;
 
-		std::unique_ptr<Halton_sampler> haltonSampler_;
+		std::unique_ptr<class CranleyPatterson> randomSampler_;
 
 		std::vector<tinyobj::shape_t> scene_;
 		std::vector<tinyobj::material_t> materials_;

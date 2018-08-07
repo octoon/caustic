@@ -1,6 +1,10 @@
 #ifndef OCTOON_MONTECARLO_THREAD_H_
 #define OCTOON_MONTECARLO_THREAD_H_
 
+#include <future>
+#include <queue>
+#include <thread>
+
 #include "MonteCarlo.h"
 
 namespace octoon
