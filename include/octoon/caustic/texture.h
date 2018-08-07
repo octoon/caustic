@@ -5,22 +5,24 @@
 
 namespace octoon
 {
+    template<class T>
     class Texture
     {
     public:
-        virtual float evaluate(float u, float v, float w) const = 0;
+        virtual T evaluate(float u, float v, float w) const = 0;
         virtual ~Texture() = default;
     };
 
-    class ConstantTexture : public Texture
+    template<class T>
+    class ConstantTexture : public Texture<T>
     {
     public:
-        ConstantTexture(const float &value) : value(value) {}
+        ConstantTexture(const T &value) : value(value) {}
         virtual ~ConstantTexture() = default;
-        virtual float evaluate(float u, float v, float w) const override { return value; }
+        virtual T evaluate(float u, float v, float w) const override { return value; }
 
     private:
-        float value;
+        T value;
     };
 } // namespace octoon
 #endif
