@@ -219,18 +219,27 @@ namespace octoon
 
 	RadeonRays::float3 bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi)
 	{
-		auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
-		f0.x = lerp(f0.x, mat.albedo.x, mat.metalness);
-		f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
-		f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
-
 		if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
+		{
+			auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+			f0.x = lerp(f0.x, mat.albedo.x, mat.metalness);
+			f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
+			f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
+
 			return SpecularBRDF_GGX(N, L, -V, f0, mat.roughness);
+		}
 
 		if (mat.ior > 1.0f)
-			return SpecularBTDF_GGX(N, L, -V, f0, mat.roughness);
+		{
+			auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+			f0.x = lerp(f0.x, mat.albedo.x, mat.metalness);
+			f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
+			f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-		return DiffuseBRDF(N, L, -V, mat.roughness);
+			return SpecularBTDF_GGX(N, L, -V, f0, mat.roughness) * mat.albedo;
+		}
+
+		return DiffuseBRDF(N, L, -V, mat.roughness) * mat.albedo * (1.0 - mat.metalness);
 	}
 }
 

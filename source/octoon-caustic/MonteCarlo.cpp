@@ -318,12 +318,11 @@ namespace octoon
 				}
 				else
 				{
-					auto ior = mat.ior;
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
 					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, mat, renderData_.random[i]);
-					if (ior <= 1.0f)
+					if (mat.ior <= 1.0f)
 					{
 						if (RadeonRays::dot(norm, L) < 0.0f)
 							L = -L;
@@ -334,13 +333,13 @@ namespace octoon
 					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, mat, renderData_.random[i]);
 
 					auto& ray = renderData_.rays[i];
-					renderData_.rays[i].d = L;
-					renderData_.rays[i].o = ro + L * 1e-5f;
-					renderData_.rays[i].SetMaxT(std::numeric_limits<float>::max());
-					renderData_.rays[i].SetTime(0.0f);
-					renderData_.rays[i].SetMask(-1);
-					renderData_.rays[i].SetActive(true);
-					renderData_.rays[i].SetDoBackfaceCulling(ior > 1.0f ? false : true);
+					ray.d = L;
+					ray.o = ro + L * 1e-5f;
+					ray.SetMaxT(std::numeric_limits<float>::max());
+					ray.SetTime(0.0f);
+					ray.SetMask(-1);
+					ray.SetActive(true);
+					ray.SetDoBackfaceCulling(mat.ior > 1.0f ? false : true);
 				}
 			}
 			else
@@ -407,9 +406,9 @@ namespace octoon
 			}
 			else
 			{
-				sample.x = mat.albedo[0];
-				sample.y = mat.albedo[1];
-				sample.z = mat.albedo[2];
+				sample.x = 1.0f;
+				sample.y = 1.0f;
+				sample.z = 1.0f;
 
 				sampleCounter++;
 			}
@@ -446,12 +445,7 @@ namespace octoon
 					if (pass + 1 >= numBounces_)
 						sample *= 0.0f;
 					else
-					{
-						sample.x *= mat.albedo[0] * atten;
-						sample.y *= mat.albedo[1] * atten;
-						sample.z *= mat.albedo[2] * atten;
-						sample *= renderData_.weights[i];
-					}
+						sample *= renderData_.weights[i] * atten;
 				}
 			}
 			else
