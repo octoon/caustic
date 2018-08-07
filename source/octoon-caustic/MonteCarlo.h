@@ -10,6 +10,8 @@
 #include <memory>
 #include "tiny_obj_loader.h"
 
+#include <octoon/caustic/BxDF.h>
+#include <octoon/caustic/tonemapping.h>
 #include <octoon/caustic/material.h>
 
 namespace octoon
@@ -90,6 +92,8 @@ namespace octoon
 
 		RenderData renderData_;
 
+		std::unique_ptr<caustic::BxDF> bxdf_;
+		std::unique_ptr<caustic::Tonemapping> tonemapping_;
 		std::unique_ptr<class CranleyPatterson> randomSampler_;
 
 		std::vector<tinyobj::shape_t> scene_;

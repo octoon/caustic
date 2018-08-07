@@ -1,24 +1,28 @@
 #include "montecarlo.h"
 #include "hammersley.h"
-#include "BxDF.h"
+#include "math.h"
 #include <assert.h>
 #include <atomic>
 #include <string>
 #include <CL/cl.h>
 
+#include <octoon/caustic/ACES.h>
+
+#include "BSDF.h"
 #include "halton.h"
 #include "cranley_patterson.h"
 
 namespace octoon
 {
-	float TonemapACES(float x)
+	float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
 	{
-		const float A = 2.51f;
-		const float B = 0.03f;
-		const float C = 2.43f;
-		const float D = 0.59f;
-		const float E = 0.14f;
-		return std::pow(std::min(1.0f, (x * (A * x + B)) / (x * (C * x + D) + E)), 1.0f / 2.2f);
+		const float invRadius = 1.0f / radius;
+		float d = std::sqrt(RadeonRays::dot(L, L));
+		float fadeoutFactor = std::min(1.0f, std::max(0.0f, (radius - d) * (invRadius / 0.2f)));
+		d = std::max(d - attenuationBulbSize, 0.0f);
+		float denom = 1.0f + d / attenuationBulbSize;
+		float attenuation = fadeoutFactor * fadeoutFactor / (denom * denom);
+		return attenuation;
 	}
 
 	RadeonRays::float3 ConvertFromBarycentric(const float* vec, const int* ind, int prim_id, const RadeonRays::float4& uvwt)
@@ -75,6 +79,8 @@ namespace octoon
 		width_ = w;
 		height_ = h;
 
+		bxdf_ = std::make_unique<caustic::BSDF>();
+		tonemapping_ = std::make_unique<caustic::ACES>();
 		randomSampler_ = std::make_unique<CranleyPatterson>(std::make_unique<Halton>());
 		randomSampler_->init_random(width_ * height_);
 
@@ -321,7 +327,7 @@ namespace octoon
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, mat, renderData_.random[i]);
+					RadeonRays::float3 L = bxdf_->bsdf(renderData_.rays[i].d, norm, mat, renderData_.random[i]);
 					if (mat.ior <= 1.0f)
 					{
 						if (RadeonRays::dot(norm, L) < 0.0f)
@@ -330,7 +336,7 @@ namespace octoon
 
 					assert(std::isfinite(L.x + L.y + L.z));
 
-					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, mat, renderData_.random[i]);
+					renderData_.weights[i] = bxdf_->bsdf_weight(renderData_.rays[i].d, norm, L, mat, renderData_.random[i]);
 
 					auto& ray = renderData_.rays[i];
 					ray.d = L;
@@ -556,9 +562,9 @@ namespace octoon
 			assert(std::isfinite(hdr.y));
 			assert(std::isfinite(hdr.z));
 
-			std::uint8_t r = TonemapACES(hdr.x / frame) * 255;
-			std::uint8_t g = TonemapACES(hdr.y / frame) * 255;
-			std::uint8_t b = TonemapACES(hdr.z / frame) * 255;
+			std::uint8_t r = tonemapping_->map(hdr.x / frame) * 255;
+			std::uint8_t g = tonemapping_->map(hdr.y / frame) * 255;
+			std::uint8_t b = tonemapping_->map(hdr.z / frame) * 255;
 
 			ldr_[index] = 0xFF << 24 | b << 16 | g << 8 | r;
 		}
