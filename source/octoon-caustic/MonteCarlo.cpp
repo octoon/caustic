@@ -164,6 +164,8 @@ namespace octoon
 			m.ior = it.ior;
 			m.metalness = saturate(it.dissolve);
 			m.roughness = std::max(1e-1f, saturate(it.shininess));
+
+			materials_.push_back(m);
 		}
 
 		return res != "" ? false : true;
@@ -317,11 +319,10 @@ namespace octoon
 				else
 				{
 					auto ior = mat.ior;
-					auto roughness = mat.roughness;
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, mat.metalness, ior, renderData_.random[i]);
+					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, mat, renderData_.random[i]);
 					if (ior <= 1.0f)
 					{
 						if (RadeonRays::dot(norm, L) < 0.0f)
@@ -330,12 +331,7 @@ namespace octoon
 
 					assert(std::isfinite(L.x + L.y + L.z));
 
-					auto specular = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
-					specular.x = lerp(specular.x, mat.albedo.x, mat.metalness);
-					specular.y = lerp(specular.y, mat.albedo.y, mat.metalness);
-					specular.z = lerp(specular.z, mat.albedo.z, mat.metalness);
-
-					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, specular, roughness, mat.metalness, ior, renderData_.random[i]);
+					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, mat, renderData_.random[i]);
 
 					auto& ray = renderData_.rays[i];
 					renderData_.rays[i].d = L;

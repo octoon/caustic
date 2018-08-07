@@ -4,6 +4,8 @@
 #include "math.h"
 #include <assert.h>
 
+#include <octoon/caustic/material.h>
+
 namespace octoon
 {
 	float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
@@ -201,29 +203,34 @@ namespace octoon
 		return TangentToWorld(H, n);
 	}
 
-	RadeonRays::float3 bsdf(const RadeonRays::float3& V, RadeonRays::float3 N, float roughness, float metalness, float ior, const RadeonRays::float2& Xi)
+	RadeonRays::float3 bsdf(const RadeonRays::float3& V, RadeonRays::float3 N, const Material& mat, const RadeonRays::float2& Xi)
 	{
 		if (RadeonRays::dot(N, V) > 0.0f)
 			N = -N;
 
-		if (Xi.x <= lerp(0.04f, 1.0f, metalness))
-			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, Xi);
+		if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
+			return LobeDirection(RadeonRays::normalize(reflect(V, N)), mat.roughness, Xi);
 
-		if (ior > 1.0f)
-			return RadeonRays::normalize(refract(V, N, 1.0f / ior));
+		if (mat.ior > 1.0f)
+			return RadeonRays::normalize(refract(V, N, 1.0f / mat.ior));
 
 		return CosineDirection(N, Xi);
 	}
 
-	RadeonRays::float3 bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& f0, float roughness, float metalness, float ior, const RadeonRays::float2& Xi)
+	RadeonRays::float3 bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi)
 	{
-		if (Xi.x <= lerp(0.04f, 1.0f, metalness))
-			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
+		auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+		f0.x = lerp(f0.x, mat.albedo.x, mat.metalness);
+		f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
+		f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-		if (ior > 1.0f)
-			return SpecularBTDF_GGX(N, L, -V, f0, roughness);
+		if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
+			return SpecularBRDF_GGX(N, L, -V, f0, mat.roughness);
 
-		return DiffuseBRDF(N, L, -V, roughness);
+		if (mat.ior > 1.0f)
+			return SpecularBTDF_GGX(N, L, -V, f0, mat.roughness);
+
+		return DiffuseBRDF(N, L, -V, mat.roughness);
 	}
 }
 
