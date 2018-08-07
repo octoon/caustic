@@ -48,13 +48,22 @@ SET(LIGHT_LIST
 )
 SOURCE_GROUP("octoon-caustic\\light" FILES ${LIGHT_LIST})
 
+SET(GEOMETRY_LIST
+	${HEADER_PATH}/geometry.h
+	${SOURCE_PATH}/geometry.cpp
+)
+SOURCE_GROUP("octoon-caustic\\geometry" FILES ${GEOMETRY_LIST})
+
 SET(MATERIAL_LIST
 	${HEADER_PATH}/material.h
 )
 SOURCE_GROUP("octoon-caustic\\material" FILES ${MATERIAL_LIST})
 
 SET(SCENE_LIST
+	${HEADER_PATH}/object.h
+	${SOURCE_PATH}/object.cpp
 	${HEADER_PATH}/scene.h
+	${SOURCE_PATH}/scene.cpp
 )
 SOURCE_GROUP("octoon-caustic\\scene" FILES ${SCENE_LIST})
 
@@ -83,7 +92,8 @@ ADD_EXECUTABLE(${LIB_NAME}
 	${OCTOON_LIST} 
 	${CAMERA_LIST} 
 	${LIGHT_LIST}
-	${MATERIAL_LIST} 
+	${GEOMETRY_LIST}
+	${MATERIAL_LIST}
 	${SCENE_LIST}
 	${SEQUENCES_LIST}
 	${SAMPLER_LIST}
