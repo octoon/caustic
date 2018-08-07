@@ -16,8 +16,8 @@ namespace octoon
 			virtual float map(float x) noexcept = 0;
 
 		private:
-			Tonemapping(const Tonemapping&) noexcept;
-			Tonemapping& operator=(const Tonemapping&) noexcept;
+			Tonemapping(const Tonemapping&) noexcept = delete;
+			Tonemapping& operator=(const Tonemapping&) noexcept = delete;
 		};
 	}
 }

@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~Light() noexcept;
 
 		private:
-			Light(const Light&) noexcept;
-			Light& operator=(const Light&) noexcept;
+			Light(const Light&) noexcept = delete;
+			Light& operator=(const Light&) noexcept = delete;
 		};
 	}
 }

@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~SphereLight() noexcept;
 
 		private:
-			SphereLight(const SphereLight&) noexcept;
-			SphereLight& operator=(const SphereLight&) noexcept;
+			SphereLight(const SphereLight&) noexcept = delete;
+			SphereLight& operator=(const SphereLight&) noexcept = delete;
 		};
 	}
 }

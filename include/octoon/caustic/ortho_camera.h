@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~OrthoCamera() noexcept;
 
 		private:
-			OrthoCamera(const OrthoCamera&) noexcept;
-			OrthoCamera& operator=(const OrthoCamera&) noexcept;
+			OrthoCamera(const OrthoCamera&) noexcept = delete;
+			OrthoCamera& operator=(const OrthoCamera&) noexcept = delete;
 		};
 	}
 }

@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~SpotLight() noexcept;
 
 		private:
-			SpotLight(const SpotLight&) noexcept;
-			SpotLight& operator=(const SpotLight&) noexcept;
+			SpotLight(const SpotLight&) noexcept = delete;
+			SpotLight& operator=(const SpotLight&) noexcept = delete;
 		};
 	}
 }

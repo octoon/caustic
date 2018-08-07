@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~Geometry() noexcept;
 
 		private:
-			Geometry(const Geometry&) noexcept;
-			Geometry& operator=(const Geometry&) noexcept;
+			Geometry(const Geometry&) noexcept = delete;
+			Geometry& operator=(const Geometry&) noexcept = delete;
 		};
 	}
 }

@@ -16,8 +16,8 @@ namespace octoon
 			virtual float map(float x) noexcept;
 
 		private:
-			ACES(const ACES&) noexcept;
-			ACES& operator=(const ACES&) noexcept;
+			ACES(const ACES&) noexcept = delete;
+			ACES& operator=(const ACES&) noexcept = delete;
 		};
 	}
 }

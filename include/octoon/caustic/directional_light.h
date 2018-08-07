@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~DirectionalLight() noexcept;
 
 		private:
-			DirectionalLight(const DirectionalLight&) noexcept;
-			DirectionalLight& operator=(const DirectionalLight&) noexcept;
+			DirectionalLight(const DirectionalLight&) noexcept = delete;
+			DirectionalLight& operator=(const DirectionalLight&) noexcept = delete;
 		};
 	}
 }

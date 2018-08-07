@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~Camera() noexcept;
 
 		private:
-			Camera(const Camera&) noexcept;
-			Camera& operator=(const Camera&) noexcept;
+			Camera(const Camera&) noexcept = delete;
+			Camera& operator=(const Camera&) noexcept = delete;
 		};
 	}
 }

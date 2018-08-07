@@ -14,8 +14,8 @@ namespace octoon
 			virtual ~EnvironmentCamera() noexcept;
 
 		private:
-			EnvironmentCamera(const EnvironmentCamera&) noexcept;
-			EnvironmentCamera& operator=(const EnvironmentCamera&) noexcept;
+			EnvironmentCamera(const EnvironmentCamera&) noexcept = delete;
+			EnvironmentCamera& operator=(const EnvironmentCamera&) noexcept = delete;
 		};
 	}
 }
