@@ -6,6 +6,9 @@
 #include <string>
 #include <CL/cl.h>
 
+#include "halton.h"
+#include "cranley_patterson.h"
+
 namespace octoon
 {
 	float TonemapACES(float x)
@@ -72,8 +75,8 @@ namespace octoon
 		width_ = w;
 		height_ = h;
 
-		haltonSampler_ = std::make_unique<Halton_sampler>();
-		haltonSampler_->init_faure();
+		randomSampler_ = std::make_unique<CranleyPatterson>(std::make_unique<Halton>());
+		randomSampler_->init_random(width_ * height_);
 
 		if (!init_data()) throw std::runtime_error("init_data() fail");
 		if (!init_Gbuffers(w, h)) throw std::runtime_error("init_Gbuffers() fail");
@@ -85,19 +88,8 @@ namespace octoon
 	MonteCarlo::init_Gbuffers(std::uint32_t, std::uint32_t h) noexcept
 	{
 		auto allocSize = width_ * height_;
-		auto rand = [](std::uint32_t seed) { return fract(std::sin(seed) * 43758.5453123); };
-
 		ldr_.resize(allocSize);
 		hdr_.resize(allocSize);
-		random_.resize(allocSize);
-
-#pragma omp parallel for
-		for (std::int32_t i = 0; i < allocSize; ++i)
-		{
-			float sx = rand(i - 64.340622f);
-			float sy = rand(i - 72.465622f);
-			random_[i] = RadeonRays::float2(sx, sy);
-		}
 
 		return true;
 	}
@@ -108,31 +100,31 @@ namespace octoon
 		RadeonRays::IntersectionApi::SetPlatform(RadeonRays::DeviceInfo::kAny);
 
 		int deviceidx = -1;
-		for (auto idx = 0U; idx < RadeonRays::IntersectionApi::GetDeviceCount(); ++idx)
+		for (auto i = 0U; i < RadeonRays::IntersectionApi::GetDeviceCount(); ++i)
 		{
 			RadeonRays::DeviceInfo devinfo;
-			RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
+			RadeonRays::IntersectionApi::GetDeviceInfo(i, devinfo);
 
 			if (devinfo.type == RadeonRays::DeviceInfo::kGpu)
 			{
 				std::string info_name(devinfo.name);
 				if (info_name.find("Intel") != std::string::npos)
 					continue;
-				deviceidx = idx;
+				deviceidx = i;
 				break;
 			}
 		}
 
 		if (deviceidx == -1)
 		{
-			for (auto idx = 0U; idx < RadeonRays::IntersectionApi::GetDeviceCount(); ++idx)
+			for (auto i = 0U; i < RadeonRays::IntersectionApi::GetDeviceCount(); ++i)
 			{
 				RadeonRays::DeviceInfo devinfo;
-				RadeonRays::IntersectionApi::GetDeviceInfo(idx, devinfo);
+				RadeonRays::IntersectionApi::GetDeviceInfo(i, devinfo);
 
 				if (devinfo.type == RadeonRays::DeviceInfo::kCpu)
 				{
-					deviceidx = idx;
+					deviceidx = i;
 					break;
 				}
 			}
@@ -158,15 +150,16 @@ namespace octoon
 			it.diffuse[1] = std::pow(it.diffuse[1], 2.2f) * it.illum;
 			it.diffuse[2] = std::pow(it.diffuse[2], 2.2f) * it.illum;
 
-			it.specular[0] = std::pow(it.specular[0], 2.2f) * it.illum;
-			it.specular[1] = std::pow(it.specular[1], 2.2f) * it.illum;
-			it.specular[2] = std::pow(it.specular[2], 2.2f) * it.illum;
+			it.specular[0] = std::pow(it.specular[0], 2.2f) * it.illum * 0.04f;
+			it.specular[1] = std::pow(it.specular[1], 2.2f) * it.illum * 0.04f;
+			it.specular[2] = std::pow(it.specular[2], 2.2f) * it.illum * 0.04f;
 
 			it.emission[0] /= (4 * PI / it.illum);
 			it.emission[1] /= (4 * PI / it.illum);
 			it.emission[2] /= (4 * PI / it.illum);
 
-			it.shininess = std::max(1e-3f, saturate(it.shininess));
+			it.shininess = std::max(1e-1f, saturate(it.shininess));
+			it.dissolve = saturate(it.dissolve);
 		}
 
 		return res != "" ? false : true;
@@ -213,6 +206,7 @@ namespace octoon
 			renderData_.samples.resize(numEstimate);
 			renderData_.random.resize(numEstimate);
 			renderData_.weights.resize(numEstimate);
+			renderData_.shadowHits.resize(numEstimate);
 
 			if (renderData_.fr_rays)
 				api_->DeleteBuffer(renderData_.fr_rays);
@@ -251,8 +245,8 @@ namespace octoon
 			auto iy = offset.y + i / size.x;
 			auto index = iy * this->width_ + ix;
 
-			float sx = fract(haltonSampler_->sample(0, frame) + random_[index].x);
-			float sy = fract(haltonSampler_->sample(1, frame) + random_[index].y);
+			float sx = randomSampler_->sample(0, frame, index);
+			float sy = randomSampler_->sample(1, frame, index);
 
 			this->renderData_.random[i] = RadeonRays::float2(sx, sy);
 		}
@@ -323,7 +317,7 @@ namespace octoon
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, ior, renderData_.random[i]);
+					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, mat.dissolve, ior, renderData_.random[i]);
 					if (ior <= 1.0f)
 					{
 						if (RadeonRays::dot(norm, L) < 0.0f)
@@ -332,7 +326,12 @@ namespace octoon
 
 					assert(std::isfinite(L.x + L.y + L.z));
 
-					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]), roughness, ior);
+					auto specular = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+					specular.x = lerp(specular.x, mat.diffuse[0], mat.dissolve);
+					specular.y = lerp(specular.y, mat.diffuse[1], mat.dissolve);
+					specular.z = lerp(specular.z, mat.diffuse[2], mat.dissolve);
+
+					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, specular, roughness, mat.dissolve, ior, renderData_.random[i]);
 
 					auto& ray = renderData_.rays[i];
 					renderData_.rays[i].d = L;
@@ -376,7 +375,7 @@ namespace octoon
 
 		api_->MapBuffer(renderData_.fr_shadowhits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->renderData_.numEstimate, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
 
-		std::memcpy(renderData_.hits.data(), hit, sizeof(RadeonRays::Intersection) * this->renderData_.numEstimate);
+		std::memcpy(renderData_.shadowHits.data(), hit, sizeof(RadeonRays::Intersection) * this->renderData_.numEstimate);
 
 		api_->UnmapBuffer(renderData_.fr_shadowhits, hit, &e); e->Wait(); api_->DeleteEvent(e);
 	}
@@ -505,7 +504,7 @@ namespace octoon
 				this->GatherSampling(pass);
 			}
 
-			/*api_->QueryOcclusion(
+			api_->QueryIntersection(
 				renderData_.fr_shadowrays,
 				renderData_.numEstimate,
 				renderData_.fr_shadowhits,
@@ -514,7 +513,7 @@ namespace octoon
 			);
 
 			this->GatherShadowHits();
-			this->GatherLightSamples();*/
+			this->GatherLightSamples();
 
 			// prepare ray for indirect lighting gathering
 			this->GenerateRays(frame);
