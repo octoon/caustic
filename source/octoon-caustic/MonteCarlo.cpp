@@ -1,5 +1,5 @@
-#include "MonteCarlo.h"
-#include "Hammersley.h"
+#include "montecarlo.h"
+#include "hammersley.h"
 #include "BxDF.h"
 #include <assert.h>
 #include <atomic>

@@ -1,5 +1,5 @@
-#ifndef OCTOON_HAMMERSLEY
-#define OCTOON_HAMMERSLEY
+#ifndef OCTOON_CAUSTIC_HAMMERSLEY
+#define OCTOON_CAUSTIC_HAMMERSLEY
 
 #include "sequences.h"
 
