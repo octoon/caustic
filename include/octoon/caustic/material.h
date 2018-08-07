@@ -1,5 +1,5 @@
-#ifndef OCTOON_MATERIAL_H_
-#define OCTOON_MATERIAL_H_
+#ifndef OCTOON_CAUSTIC_MATERIAL_H_
+#define OCTOON_CAUSTIC_MATERIAL_H_
 
 #include <radeon_rays.h>
 

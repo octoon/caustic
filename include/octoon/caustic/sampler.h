@@ -1,5 +1,5 @@
-#ifndef OCTOON_SAMPLER
-#define OCTOON_SAMPLER
+#ifndef OCTOON_CAUSTIC_SAMPLER
+#define OCTOON_CAUSTIC_SAMPLER
 
 #include "math.h"
 #include "texture.h"
