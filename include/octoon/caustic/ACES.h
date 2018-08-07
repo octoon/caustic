@@ -13,7 +13,7 @@ namespace octoon
 			ACES() noexcept;
 			virtual ~ACES() noexcept;
 
-			virtual float map(float x) noexcept;
+			virtual float map(float x) noexcept override;
 
 		private:
 			ACES(const ACES&) noexcept = delete;

@@ -12,7 +12,7 @@ namespace octoon
 		Hammersley(std::uint32_t maxSamples) noexcept;
 		~Hammersley() noexcept;
 
-		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept;
+		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept override;
 		float sample(std::uint32_t dimension, std::uint32_t index, std::uint32_t seed) const noexcept;
 
 	private:

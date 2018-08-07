@@ -13,7 +13,7 @@ namespace octoon
 		Halton() noexcept;
 		~Halton() noexcept;
 
-		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept;
+		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept override;
 
 	private:
 		std::unique_ptr<Halton_sampler> haltonSampler_;

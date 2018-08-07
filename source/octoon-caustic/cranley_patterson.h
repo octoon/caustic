@@ -17,7 +17,7 @@ namespace octoon
 
 		void init_random(std::uint32_t size) noexcept;
 
-		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept;
+		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept override;
 		float sample(std::uint32_t dimension, std::uint32_t frame, std::uint32_t index) const noexcept;
 
 	private:
