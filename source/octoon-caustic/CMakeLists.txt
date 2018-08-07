@@ -72,10 +72,10 @@ SET(OCTOON_LIST
 	${SOURCE_PATH}/main.cpp
 	${SOURCE_PATH}/tiny_obj_loader.cpp
 	${SOURCE_PATH}/tiny_obj_loader.h
-	${SOURCE_PATH}/MonteCarlo.h
-	${SOURCE_PATH}/MonteCarlo.cpp
-	${SOURCE_PATH}/MonteCarloThread.h
-	${SOURCE_PATH}/MonteCarloThread.cpp
+	${SOURCE_PATH}/montecarlo.h
+	${SOURCE_PATH}/montecarlo.cpp
+	${SOURCE_PATH}/montecarlo_thread.h
+	${SOURCE_PATH}/montecarlo_thread.cpp
 )
 SOURCE_GROUP("octoon-caustic" FILES ${OCTOON_LIST})
 

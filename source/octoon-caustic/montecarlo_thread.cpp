@@ -1,5 +1,5 @@
-#include "MonteCarloThread.h"
-#include "MonteCarlo.h"
+#include "montecarlo_thread.h"
+#include "montecarlo.h"
 
 #include <algorithm>
 

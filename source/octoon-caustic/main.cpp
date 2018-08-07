@@ -6,7 +6,7 @@
 #include <GLFW/glfw3.h>
 #include <GL/GL.h>
 
-#include "MonteCarloThread.h"
+#include "montecarlo_thread.h"
 
 void dumpTGA(std::ostream& stream, std::uint8_t pixesl[], std::uint32_t width, std::uint32_t height, std::uint8_t channel) noexcept
 {
@@ -104,7 +104,7 @@ int main(int argc, const char* argv[])
 
 				if (::glfwWindowShouldClose(window))
 					goto exit;
-				
+
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, engine.data());
 
 				int w = 0, h = 0;
