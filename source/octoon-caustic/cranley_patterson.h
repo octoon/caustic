@@ -1,5 +1,5 @@
-#ifndef OCTOON_CRANLEY_PATTERSON
-#define OCTOON_CRANLEY_PATTERSON
+#ifndef OCTOON_CAUSTIC_CRANLEY_PATTERSON
+#define OCTOON_CAUSTIC_CRANLEY_PATTERSON
 
 #include "sequences.h"
 #include <vector>

@@ -1,5 +1,5 @@
-#ifndef OCTOON_SEQUENCES
-#define OCTOON_SEQUENCES
+#ifndef OCTOON_CAUSTIC_SEQUENCES
+#define OCTOON_CAUSTIC_SEQUENCES
 
 #include <algorithm>
 #include <memory>

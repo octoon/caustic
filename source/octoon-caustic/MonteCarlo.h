@@ -1,5 +1,5 @@
-#ifndef OCTOON_MONTECARLO_H_
-#define OCTOON_MONTECARLO_H_
+#ifndef OCTOON_CAUSTIC_MONTECARLO_H_
+#define OCTOON_CAUSTIC_MONTECARLO_H_
 
 #include <algorithm>
 #include <vector>

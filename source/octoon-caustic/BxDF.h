@@ -1,5 +1,5 @@
-#ifndef OCTOON_BxDF
-#define OCTOON_BxDF
+#ifndef OCTOON_CAUSTIC_BxDF
+#define OCTOON_CAUSTIC_BxDF
 
 #include "math.h"
 #include <assert.h>

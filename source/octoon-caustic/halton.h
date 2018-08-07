@@ -1,5 +1,5 @@
-#ifndef OCTOON_HALTON
-#define OCTOON_HALTON
+#ifndef OCTOON_CAUSTIC_HALTON
+#define OCTOON_CAUSTIC_HALTON
 
 #include "sequences.h"
 

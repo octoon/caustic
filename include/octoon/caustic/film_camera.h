@@ -1,5 +1,5 @@
-#ifndef OCTOON_CAMERA_H_
-#define OCTOON_CAMERA_H_
+#ifndef OCTOON_CAUSTIC_CAMERA_H_
+#define OCTOON_CAUSTIC_CAMERA_H_
 
 namespace octoon
 {

@@ -1,5 +1,5 @@
-#ifndef OCTOON_TEXTURE
-#define OCTOON_TEXTURE
+#ifndef OCTOON_CAUSTIC_TEXTURE_H_
+#define OCTOON_CAUSTIC_TEXTURE_H_
 
 #include "math.h"
 
