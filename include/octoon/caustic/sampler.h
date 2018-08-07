@@ -1,5 +1,5 @@
-#ifndef CAUSTIC_SAMPLER
-#define CAUSTIC_SAMPLER
+#ifndef OCTOON_CAUSTIC_SAMPLER
+#define OCTOON_CAUSTIC_SAMPLER
 
 #include <algorithm>
 
@@ -10,34 +10,41 @@ namespace octoon
 {
     namespace caustic
     {
+        template<class T>
         class Sampler
         {
         public:
-            virtual void sample(const Texture &origin, float u, float lod) = 0;
-            virtual void sample(const Texture &origin, float u, float v, float lod) = 0;
-            virtual void sample(const Texture &origin, float u, float v, float w, float lod) = 0;
+            virtual T sample(const Texture<T> &origin, float u, float lod) = 0;
+            virtual T sample(const Texture<T> &origin, float u, float v, float lod) = 0;
+            virtual T sample(const Texture<T> &origin, float u, float v, float w, float lod) = 0;
         };
 
-        class NearestNeighborInterpolation : public Sampler
+        template<class T>
+        class NearestNeighborInterpolation : public Sampler<T>
         {
         public:
-            virtual void sample(const Texture &origin, float u, float lod)
+            virtual T sample(const Texture<T> &origin, float u, float lod)
             {
 
             }
-            virtual void sample(const Texture &origin, float u, float v, float lod)
+            virtual T sample(const Texture<T> &origin, float u, float v, float lod)
             {
-                auto x = clamp(u, 0.f, 1.f) * this->width;
-                auto y = clamp(v, 0.f, 1.f) * this->height;
-                auto n = (this->width * (int)std::round(y) + (int)std::round(x)) * this->channel;
+                auto x = clamp(u, 0.f, 1.f);
+                auto y = clamp(v, 0.f, 1.f);
+                auto n = origin.evaluate((int)std::round(x), (int)std::round(y));
 
-                return Vector3<T>(this->data[n], this->data[n + 1], this->data[n + 2]);
+                return n;
             }
-            virtual void sample(const Texture &origin, float u, float v, float w, float lod)
+            virtual T sample(const Texture<T> &origin, float u, float v, float w, float lod)
             {
+                auto x = clamp(u, 0.f, 1.f);
+                auto y = clamp(v, 0.f, 1.f);
+                auto z = clamp(w, 0.f, 1.f);
+                auto n = origin.evaluate((int)std::round(x), (int)std::round(y), (int)std::round(z));
 
+                return n;
             }
         };
     }
 } // namespace octoon
-#endif // CAUSTIC_SAMPLER
+#endif // OCTOON_CAUSTIC_SAMPLER
