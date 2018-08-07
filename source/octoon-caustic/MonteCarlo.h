@@ -6,8 +6,10 @@
 #include <atomic>
 #include <radeon_rays.h>
 #include <radeon_rays_cl.h>
-
+#include <memory>
 #include "tiny_obj_loader.h"
+
+#include <octoon/caustic/material.h>
 
 namespace octoon
 {
@@ -90,7 +92,7 @@ namespace octoon
 		std::unique_ptr<class CranleyPatterson> randomSampler_;
 
 		std::vector<tinyobj::shape_t> scene_;
-		std::vector<tinyobj::material_t> materials_;
+		std::vector<Material> materials_;
 	};
 }
 

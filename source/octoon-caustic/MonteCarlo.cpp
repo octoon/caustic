@@ -142,24 +142,28 @@ namespace octoon
 	{
 		std::string basepath = "../Resources/CornellBox/";
 		std::string filename = basepath + "orig.objm";
-		std::string res = LoadObj(scene_, materials_, filename.c_str(), basepath.c_str());
 
-		for (auto& it : materials_)
+		std::vector<tinyobj::material_t> material;
+		std::string res = LoadObj(scene_, material, filename.c_str(), basepath.c_str());
+
+		for (auto& it : material)
 		{
-			it.diffuse[0] = std::pow(it.diffuse[0], 2.2f) * it.illum;
-			it.diffuse[1] = std::pow(it.diffuse[1], 2.2f) * it.illum;
-			it.diffuse[2] = std::pow(it.diffuse[2], 2.2f) * it.illum;
+			Material m;
+			m.albedo.x = std::pow(it.diffuse[0], 2.2f) * it.illum;
+			m.albedo.y = std::pow(it.diffuse[1], 2.2f) * it.illum;
+			m.albedo.z = std::pow(it.diffuse[2], 2.2f) * it.illum;
 
-			it.specular[0] = std::pow(it.specular[0], 2.2f) * it.illum * 0.04f;
-			it.specular[1] = std::pow(it.specular[1], 2.2f) * it.illum * 0.04f;
-			it.specular[2] = std::pow(it.specular[2], 2.2f) * it.illum * 0.04f;
+			m.specular.x = std::pow(it.specular[0], 2.2f) * it.illum * 0.04f;
+			m.specular.y = std::pow(it.specular[1], 2.2f) * it.illum * 0.04f;
+			m.specular.z = std::pow(it.specular[2], 2.2f) * it.illum * 0.04f;
 
-			it.emission[0] /= (4 * PI / it.illum);
-			it.emission[1] /= (4 * PI / it.illum);
-			it.emission[2] /= (4 * PI / it.illum);
+			m.emissive.x /= (4 * PI / it.illum);
+			m.emissive.y /= (4 * PI / it.illum);
+			m.emissive.z /= (4 * PI / it.illum);
 
-			it.shininess = std::max(1e-1f, saturate(it.shininess));
-			it.dissolve = saturate(it.dissolve);
+			m.ior = it.ior;
+			m.metalness = saturate(it.dissolve);
+			m.roughness = std::max(1e-1f, saturate(it.shininess));
 		}
 
 		return res != "" ? false : true;
@@ -304,20 +308,20 @@ namespace octoon
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
 				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
-				tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
+				Material& mat = materials_[mesh.material_ids[hit.primid]];
 
-				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+				if (mat.emissive.x > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
 				{
 					std::memset(&renderData_.rays[i], 0, sizeof(RadeonRays::ray));
 				}
 				else
 				{
 					auto ior = mat.ior;
-					auto roughness = mat.shininess;
+					auto roughness = mat.roughness;
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, mat.dissolve, ior, renderData_.random[i]);
+					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, mat.metalness, ior, renderData_.random[i]);
 					if (ior <= 1.0f)
 					{
 						if (RadeonRays::dot(norm, L) < 0.0f)
@@ -327,11 +331,11 @@ namespace octoon
 					assert(std::isfinite(L.x + L.y + L.z));
 
 					auto specular = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
-					specular.x = lerp(specular.x, mat.diffuse[0], mat.dissolve);
-					specular.y = lerp(specular.y, mat.diffuse[1], mat.dissolve);
-					specular.z = lerp(specular.z, mat.diffuse[2], mat.dissolve);
+					specular.x = lerp(specular.x, mat.albedo.x, mat.metalness);
+					specular.y = lerp(specular.y, mat.albedo.y, mat.metalness);
+					specular.z = lerp(specular.z, mat.albedo.z, mat.metalness);
 
-					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, specular, roughness, mat.dissolve, ior, renderData_.random[i]);
+					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, specular, roughness, mat.metalness, ior, renderData_.random[i]);
 
 					auto& ray = renderData_.rays[i];
 					renderData_.rays[i].d = L;
@@ -396,20 +400,20 @@ namespace octoon
 			if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
 				continue;
 
-			tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
-			tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
+			auto& mesh = scene_[hit.shapeid].mesh;
+			auto& mat = materials_[mesh.material_ids[hit.primid]];
 
-			if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+			if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
 			{
-				sample.x = mat.emission[0];
-				sample.y = mat.emission[1];
-				sample.z = mat.emission[2];
+				sample.x = mat.emissive[0];
+				sample.y = mat.emissive[1];
+				sample.z = mat.emissive[2];
 			}
 			else
 			{
-				sample.x = mat.diffuse[0];
-				sample.y = mat.diffuse[1];
-				sample.z = mat.diffuse[2];
+				sample.x = mat.albedo[0];
+				sample.y = mat.albedo[1];
+				sample.z = mat.albedo[2];
 
 				sampleCounter++;
 			}
@@ -430,15 +434,15 @@ namespace octoon
 
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
-				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
-				tinyobj::material_t& mat = materials_[mesh.material_ids[hit.primid]];
+				auto& mesh = scene_[hit.shapeid].mesh;
+				auto& mat = materials_[mesh.material_ids[hit.primid]];
 
 				float atten = GetPhysicalLightAttenuation(renderData_.rays[i].o - ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
-				if (mat.emission[0] > 0.0f || mat.emission[1] > 0.0f || mat.emission[2] > 0.0f)
+				if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
 				{
-					sample.x *= mat.emission[0] * atten;
-					sample.y *= mat.emission[1] * atten;
-					sample.z *= mat.emission[2] * atten;
+					sample.x *= mat.emissive[0] * atten;
+					sample.y *= mat.emissive[1] * atten;
+					sample.z *= mat.emissive[2] * atten;
 					sample *= renderData_.weights[i];
 				}
 				else
@@ -447,9 +451,9 @@ namespace octoon
 						sample *= 0.0f;
 					else
 					{
-						sample.x *= mat.diffuse[0] * atten;
-						sample.y *= mat.diffuse[1] * atten;
-						sample.z *= mat.diffuse[2] * atten;
+						sample.x *= mat.albedo[0] * atten;
+						sample.y *= mat.albedo[1] * atten;
+						sample.z *= mat.albedo[2] * atten;
 						sample *= renderData_.weights[i];
 					}
 				}

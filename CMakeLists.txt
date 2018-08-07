@@ -10,7 +10,7 @@ SET(OCTOON_RAY_PATH_DEPENDENCIES ${OCTOON_RAY_PATH}/contrib CACHE STRING "Adds a
 #SET(OCTOON_RAY_PATH_TOOLS ${OCTOON_RAY_PATH}/tools CACHE STRING "Adds a path to octoon_ray tools" FORCE)
 #SET(OCTOON_RAY_PATH_SAMPLES ${OCTOON_RAY_PATH}/samples CACHE STRING "Adds a path to octoon_ray samples" FORCE)
 SET(OCTOON_RAY_PATH_INCLUDE ${OCTOON_RAY_PATH}/include CACHE STRING "Adds a path to octoon_ray header" FORCE)
-SET(OCTOON_RAY_PATH_HEADER ${OCTOON_RAY_PATH_INCLUDE}/octoon_ray CACHE STRING "Adds a path to octoon_ray header" FORCE)
+SET(OCTOON_RAY_PATH_HEADER ${OCTOON_RAY_PATH_INCLUDE}/octoon CACHE STRING "Adds a path to octoon header" FORCE)
 SET(OCTOON_RAY_PATH_SOURCE ${OCTOON_RAY_PATH}/source CACHE STRING "Adds a path to octoon_ray source" FORCE)
 #SET(OCTOON_RAY_PATH_DOCUMENT ${OCTOON_RAY_PATH}/document CACHE STRING "Adds a path to octoon_ray document" FORCE)
 
