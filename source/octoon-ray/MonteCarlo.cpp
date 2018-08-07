@@ -158,15 +158,16 @@ namespace octoon
 			it.diffuse[1] = std::pow(it.diffuse[1], 2.2f) * it.illum;
 			it.diffuse[2] = std::pow(it.diffuse[2], 2.2f) * it.illum;
 
-			it.specular[0] = std::pow(it.specular[0], 2.2f) * it.illum;
-			it.specular[1] = std::pow(it.specular[1], 2.2f) * it.illum;
-			it.specular[2] = std::pow(it.specular[2], 2.2f) * it.illum;
+			it.specular[0] = std::pow(it.specular[0], 2.2f) * it.illum * 0.04f;
+			it.specular[1] = std::pow(it.specular[1], 2.2f) * it.illum * 0.04f;
+			it.specular[2] = std::pow(it.specular[2], 2.2f) * it.illum * 0.04f;
 
 			it.emission[0] /= (4 * PI / it.illum);
 			it.emission[1] /= (4 * PI / it.illum);
 			it.emission[2] /= (4 * PI / it.illum);
 
-			it.shininess = std::max(1e-3f, saturate(it.shininess));
+			it.shininess = std::max(1e-1f, saturate(it.shininess));
+			it.dissolve = saturate(it.dissolve);
 		}
 
 		return res != "" ? false : true;
@@ -323,7 +324,7 @@ namespace octoon
 					auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, ior, renderData_.random[i]);
+					RadeonRays::float3 L = bsdf(renderData_.rays[i].d, norm, roughness, mat.dissolve, ior, renderData_.random[i]);
 					if (ior <= 1.0f)
 					{
 						if (RadeonRays::dot(norm, L) < 0.0f)
@@ -332,7 +333,12 @@ namespace octoon
 
 					assert(std::isfinite(L.x + L.y + L.z));
 
-					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]), roughness, ior);
+					auto specular = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+					specular.x = lerp(specular.x, mat.diffuse[0], mat.dissolve);
+					specular.y = lerp(specular.y, mat.diffuse[1], mat.dissolve);
+					specular.z = lerp(specular.z, mat.diffuse[2], mat.dissolve);
+
+					renderData_.weights[i] = bsdf_weight(renderData_.rays[i].d, norm, L, specular, roughness, mat.dissolve, ior, renderData_.random[i]);
 
 					auto& ray = renderData_.rays[i];
 					renderData_.rays[i].d = L;

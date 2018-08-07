@@ -102,7 +102,7 @@ namespace octoon
 		return 0;
 	}
 
-	RadeonRays::float3 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& specular, float roughness)
+	RadeonRays::float3 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
 	{
 		float nl = std::abs(RadeonRays::dot(L, N));
 		if (nl > 0)
@@ -123,8 +123,7 @@ namespace octoon
 			float G = 0.5 / (Gv + Gl);
 
 			float Fc = std::pow(1 - nv, 5);
-			RadeonRays::float3 F0 = specular * 0.04f;
-			RadeonRays::float3 Fr = F0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
+			RadeonRays::float3 Fr = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
 			RadeonRays::float3 Ft = RadeonRays::float3(1.0f, 1.0f, 1.0f) - Fr;
 
 			return Ft * G * nl * (4 * nl * nv);
@@ -158,27 +157,27 @@ namespace octoon
 		return TangentToWorld(H, n);
 	}
 
-	RadeonRays::float3 bsdf(const RadeonRays::float3& V, RadeonRays::float3 N, float roughness, float ior, const RadeonRays::float2& Xi)
+	RadeonRays::float3 bsdf(const RadeonRays::float3& V, RadeonRays::float3 N, float roughness, float metalness, float ior, const RadeonRays::float2& Xi)
 	{
 		if (RadeonRays::dot(N, V) > 0.0f)
 			N = -N;
 
+		if (Xi.x <= lerp(0.04f, 1.0f, metalness))
+			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, Xi);
+
 		if (ior > 1.0f)
 			return RadeonRays::normalize(refract(V, N, 1.0f / ior));
-
-		if (roughness < 1.0f)
-			return LobeDirection(RadeonRays::normalize(reflect(V, N)), roughness, Xi);
 
 		return CosineDirection(N, Xi);
 	}
 
-	RadeonRays::float3 bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& f0, float roughness, float ior)
+	RadeonRays::float3 bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& f0, float roughness, float metalness, float ior, const RadeonRays::float2& Xi)
 	{
+		if (Xi.x <= lerp(0.04f, 1.0f, metalness))
+			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
+
 		if (ior > 1.0f)
 			return SpecularBTDF_GGX(N, L, -V, f0, roughness);
-
-		if (roughness < 1.0f)
-			return SpecularBRDF_GGX(N, L, -V, f0, roughness);
 
 		return DiffuseBRDF(N, L, -V, roughness);
 	}
