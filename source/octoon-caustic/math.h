@@ -86,6 +86,14 @@ namespace octoon
 		return 1.0f / fast_rsqrt(x);
 	}
 
+	template <typename T, typename U, typename V>
+    T clamp(T val, U low, V high)
+    {
+        if (val < low) return low;
+        else if (val > high) return high;
+        else return val;
+    }
+
 }
 
 #endif
