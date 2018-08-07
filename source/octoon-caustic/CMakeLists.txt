@@ -77,14 +77,18 @@ SET(TEXTURE_LIST
 )
 SOURCE_GROUP("octoon-caustic\\texture" FILES ${TEXTURE_LIST})
 
-SET(OCTOON_LIST
-	${SOURCE_PATH}/main.cpp
-	${SOURCE_PATH}/tiny_obj_loader.cpp
-	${SOURCE_PATH}/tiny_obj_loader.h
+SET(PIPELINE_LIST
 	${SOURCE_PATH}/montecarlo.h
 	${SOURCE_PATH}/montecarlo.cpp
 	${SOURCE_PATH}/montecarlo_thread.h
 	${SOURCE_PATH}/montecarlo_thread.cpp
+)
+SOURCE_GROUP("octoon-caustic\\pipeline" FILES ${PIPELINE_LIST})
+
+SET(OCTOON_LIST
+	${SOURCE_PATH}/main.cpp
+	${SOURCE_PATH}/tiny_obj_loader.cpp
+	${SOURCE_PATH}/tiny_obj_loader.h
 )
 SOURCE_GROUP("octoon-caustic" FILES ${OCTOON_LIST})
 
@@ -99,6 +103,7 @@ ADD_EXECUTABLE(${LIB_NAME}
 	${SAMPLER_LIST}
 	${TEXTURE_LIST}
 	${BXDF_LIST}
+	${PIPELINE_LIST}
 )
 
 TARGET_LINK_LIBRARIES(${LIB_NAME} PUBLIC glfw)
