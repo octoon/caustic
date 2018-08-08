@@ -154,7 +154,7 @@ namespace octoon
 
 		for (auto& it : material)
 		{
-			Material m;
+			caustic::Material m;
 			m.albedo.x = std::pow(it.diffuse[0], 2.2f) * it.illum;
 			m.albedo.y = std::pow(it.diffuse[1], 2.2f) * it.illum;
 			m.albedo.z = std::pow(it.diffuse[2], 2.2f) * it.illum;
@@ -185,11 +185,11 @@ namespace octoon
 			tinyobj::shape_t& objshape = this->scene_[id];
 
 			float* vertdata = objshape.mesh.positions.data();
-			int nvert = objshape.mesh.positions.size() / 3;
+			std::size_t nvert = objshape.mesh.positions.size() / 3;
 			int* indices = objshape.mesh.indices.data();
-			int nfaces = objshape.mesh.indices.size() / 3;
+			std::size_t nfaces = objshape.mesh.indices.size() / 3;
 
-			RadeonRays::Shape* shape = this->api_->CreateMesh(vertdata, nvert, 3 * sizeof(float), indices, 0, nullptr, nfaces);
+			RadeonRays::Shape* shape = this->api_->CreateMesh(vertdata, (int)nvert, 3 * sizeof(float), indices, 0, nullptr, (int)nfaces);
 
 			assert(shape != nullptr);
 			this->api_->AttachShape(shape);
@@ -209,7 +209,7 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GenerateWorkspace(std::uint32_t numEstimate)
+	MonteCarlo::GenerateWorkspace(std::int32_t numEstimate)
 	{
 		if (tileNums_ < numEstimate)
 		{
@@ -315,8 +315,8 @@ namespace octoon
 			auto& hit = renderData_.hits[i];
 			if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
 			{
-				tinyobj::mesh_t& mesh = scene_[hit.shapeid].mesh;
-				Material& mat = materials_[mesh.material_ids[hit.primid]];
+				auto& mesh = scene_[hit.shapeid].mesh;
+				auto& mat = materials_[mesh.material_ids[hit.primid]];
 
 				if (mat.emissive.x > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
 				{
@@ -422,7 +422,7 @@ namespace octoon
 	}
 
 	void
-	MonteCarlo::GatherSampling(std::uint32_t pass) noexcept
+	MonteCarlo::GatherSampling(std::int32_t pass) noexcept
 	{
 #pragma omp parallel for
 		for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
@@ -470,9 +470,6 @@ namespace octoon
 	void
 	MonteCarlo::Estimate(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size)
 	{
-		RadeonRays::Event* e = nullptr;
-		RadeonRays::Intersection* hit = nullptr;
-
 		this->GenerateWorkspace(size.x * size.y);
 		this->GenerateNoise(frame, offset, size);
 

@@ -18,7 +18,7 @@ namespace octoon
 {
 	struct RenderData
 	{
-		std::uint32_t numEstimate;
+		std::int32_t numEstimate;
 
 		std::vector<RadeonRays::ray> rays;
 		std::vector<RadeonRays::Intersection> hits;
@@ -55,14 +55,14 @@ namespace octoon
 		bool init_RadeonRays_Scene();
 
 	private:
-		void GenerateWorkspace(std::uint32_t numEstimate);
+		void GenerateWorkspace(std::int32_t numEstimate);
 
 		void GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 		void GenerateRays(std::uint32_t frame) noexcept;
 		void GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
 		void GatherFirstSampling(std::atomic_uint32_t& sampleCounter) noexcept;
-		void GatherSampling(std::uint32_t pass) noexcept;
+		void GatherSampling(std::int32_t pass) noexcept;
 		void GatherHits() noexcept;
 		void GatherShadowHits() noexcept;
 		void GatherLightSamples() noexcept;
@@ -78,8 +78,8 @@ namespace octoon
 		std::uint32_t width_;
 		std::uint32_t height_;
 
-		std::uint32_t numBounces_;
-		std::uint32_t tileNums_;
+		std::int32_t numBounces_;
+		std::int32_t tileNums_;
 
 		RadeonRays::IntersectionApi* api_;
 
@@ -97,7 +97,7 @@ namespace octoon
 		std::unique_ptr<class CranleyPatterson> randomSampler_;
 
 		std::vector<tinyobj::shape_t> scene_;
-		std::vector<Material> materials_;
+		std::vector<caustic::Material> materials_;
 	};
 }
 

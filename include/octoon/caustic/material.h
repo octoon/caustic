@@ -5,16 +5,19 @@
 
 namespace octoon
 {
-	struct Material
+	namespace caustic
 	{
-		RadeonRays::float3 albedo;
-		RadeonRays::float3 specular;
-		RadeonRays::float3 emissive;
+		struct Material
+		{
+			RadeonRays::float3 albedo;
+			RadeonRays::float3 specular;
+			RadeonRays::float3 emissive;
 
-		float ior;
-		float roughness;
-		float metalness;
-	};
+			float ior;
+			float roughness;
+			float metalness;
+		};
+	}
 }
 
 #endif

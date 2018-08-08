@@ -125,7 +125,6 @@ namespace octoon
 
 				float nv = std::abs(RadeonRays::dot(V, N)) + 0.1f;
 				float vh = saturate(RadeonRays::dot(V, L));
-				float nh = saturate(RadeonRays::dot(H, N));
 
 				float m = roughness * roughness;
 				float Gv = nl * (nv * (1 - m) + m);
@@ -149,14 +148,8 @@ namespace octoon
 				auto H = RadeonRays::normalize(L + V);
 
 				float nv = std::abs(RadeonRays::dot(V, N)) + 0.1f;
-				float vh = saturate(RadeonRays::dot(V, L));
-				float nh = saturate(RadeonRays::dot(H, N));
 
 				float m = roughness * roughness;
-				float m2 = m * m;
-				float spec = (nh * m2 - nh) * nh + 1.0f;
-				float D = m2 / (spec * spec) * PI;
-
 				float Gv = nl * (nv * (1 - m) + m);
 				float Gl = nv * (nl * (1 - m) + m);
 				float G = 0.5f / (Gv + Gl);
@@ -236,7 +229,7 @@ namespace octoon
 				return SpecularBTDF_GGX(N, L, -V, f0, mat.roughness) * mat.albedo;
 			}
 
-			return DiffuseBRDF(N, L, -V, mat.roughness) * mat.albedo * (1.0 - mat.metalness);
+			return DiffuseBRDF(N, L, -V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
 		}
 	}
 }
