@@ -166,7 +166,7 @@ namespace octoon
 				if (lod > 0)
 					return minFilter_->sample(texels, u, lod);
 				else
-					return magFilter_->sample(texels, u, lod);
+					return magFilter_->sample(texels, u, 0);
 			}
 
 			T sample(const Texture<T>& texels, float u, float v, float lod) noexcept override
@@ -174,7 +174,7 @@ namespace octoon
 				if (lod > 0)
 					return minFilter_->sample(texels, u, v, lod);
 				else
-					return magFilter_->sample(texels, u, v, lod);
+					return magFilter_->sample(texels, u, v, 0);
 			}
 
 			T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept override
@@ -182,7 +182,7 @@ namespace octoon
 				if (lod > 0)
 					return minFilter_->sample(texels, u, v, w, lod);
 				else
-					return magFilter_->sample(texels, u, v, w, lod);
+					return magFilter_->sample(texels, u, v, w, 0);
 			}
 
 			T sample(const Texture<T>& texels, float u, float dx, float dy) noexcept
