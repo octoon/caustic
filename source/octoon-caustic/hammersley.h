@@ -1,7 +1,7 @@
 #ifndef OCTOON_CAUSTIC_HAMMERSLEY
 #define OCTOON_CAUSTIC_HAMMERSLEY
 
-#include "sequences.h"
+#include <octoon/caustic/sequences.h>
 
 namespace octoon
 {

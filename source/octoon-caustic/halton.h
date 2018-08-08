@@ -1,7 +1,8 @@
 #ifndef OCTOON_CAUSTIC_HALTON
 #define OCTOON_CAUSTIC_HALTON
 
-#include "sequences.h"
+#include <memory>
+#include <octoon/caustic/sequences.h>
 
 class Halton_sampler;
 

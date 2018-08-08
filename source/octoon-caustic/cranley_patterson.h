@@ -1,8 +1,10 @@
 #ifndef OCTOON_CAUSTIC_CRANLEY_PATTERSON
 #define OCTOON_CAUSTIC_CRANLEY_PATTERSON
 
-#include "sequences.h"
 #include <vector>
+#include <memory>
+
+#include <octoon/caustic/sequences.h>
 
 namespace octoon
 {

@@ -1,4 +1,4 @@
-#include "sequences.h"
+#include <octoon/caustic/sequences.h>
 
 namespace octoon
 {

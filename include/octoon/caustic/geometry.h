@@ -13,8 +13,7 @@ namespace octoon
 			Geometry() noexcept;
 			virtual ~Geometry() noexcept;
 
-			void setTransform(const float m[4][4], const float minv[4][4]) noexcept;
-			void getTransform(const float m[4][4], const float minv[4][4]) const noexcept;
+
 
 		private:
 			Geometry(const Geometry&) noexcept = delete;

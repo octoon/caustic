@@ -11,6 +11,10 @@ namespace octoon
 			Object() noexcept;
 			virtual ~Object() noexcept;
 
+			void setTransform(const float m[4][4], const float minv[4][4]) noexcept;
+			const float* getTransform() const noexcept;
+			const float* getTransformInverse() const noexcept;
+
 			template<typename T>
 			bool isA()
 			{
@@ -26,6 +30,10 @@ namespace octoon
 		private:
 			Object(const Object&) = delete;
 			Object& operator=(const Object&) = delete;
+
+		private:
+			float transform_[4][4];
+			float transformInverse_[4][4];
 		};
 	}
 }

@@ -1,4 +1,5 @@
 #include <octoon/caustic/geometry.h>
+#include <memory>
 
 namespace octoon
 {

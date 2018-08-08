@@ -6,7 +6,7 @@ SET(SOURCE_PATH ${OCTOON_PATH_SOURCE}/${LIB_NAME})
 SET(SEQUENCES_LIST
 	${SOURCE_PATH}/cranley_patterson.h
 	${SOURCE_PATH}/cranley_patterson.cpp
-	${SOURCE_PATH}/sequences.h
+	${HEADER_PATH}/sequences.h
 	${SOURCE_PATH}/sequences.cpp
 	${SOURCE_PATH}/hammersley.h
 	${SOURCE_PATH}/hammersley.cpp

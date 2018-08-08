@@ -2,7 +2,6 @@
 #define OCTOON_CAUSTIC_SEQUENCES
 
 #include <algorithm>
-#include <memory>
 
 namespace octoon
 {
