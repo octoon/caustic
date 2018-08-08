@@ -31,38 +31,6 @@ SET(BXDF_LIST
 )
 SOURCE_GROUP("octoon-caustic\\BxDF" FILES ${BXDF_LIST})
 
-SET(CAMERA_LIST
-	${HEADER_PATH}/camera.h
-	${SOURCE_PATH}/camera.cpp
-	${HEADER_PATH}/ortho_camera.h
-	${SOURCE_PATH}/ortho_camera.cpp
-	${HEADER_PATH}/film_camera.h
-	${SOURCE_PATH}/film_camera.cpp
-	${HEADER_PATH}/environment_camera.h
-	${SOURCE_PATH}/environment_camera.cpp
-)
-SOURCE_GROUP("octoon-caustic\\camera" FILES ${CAMERA_LIST})
-
-SET(LIGHT_LIST
-	${HEADER_PATH}/light.h
-	${SOURCE_PATH}/light.cpp
-	${HEADER_PATH}/directional_light.h
-	${SOURCE_PATH}/directional_light.cpp
-	${HEADER_PATH}/point_light.h
-	${SOURCE_PATH}/point_light.cpp
-	${HEADER_PATH}/spot_light.h
-	${SOURCE_PATH}/spot_light.cpp
-	${HEADER_PATH}/sphere_light.h
-	${SOURCE_PATH}/sphere_light.cpp
-)
-SOURCE_GROUP("octoon-caustic\\light" FILES ${LIGHT_LIST})
-
-SET(GEOMETRY_LIST
-	${HEADER_PATH}/geometry.h
-	${SOURCE_PATH}/geometry.cpp
-)
-SOURCE_GROUP("octoon-caustic\\geometry" FILES ${GEOMETRY_LIST})
-
 SET(MATERIAL_LIST
 	${HEADER_PATH}/material.h
 )
@@ -75,6 +43,40 @@ SET(SCENE_LIST
 	${SOURCE_PATH}/scene.cpp
 )
 SOURCE_GROUP("octoon-caustic\\scene" FILES ${SCENE_LIST})
+
+SET(CAMERA_LIST
+	${HEADER_PATH}/camera.h
+	${SOURCE_PATH}/camera.cpp
+	${HEADER_PATH}/ortho_camera.h
+	${SOURCE_PATH}/ortho_camera.cpp
+	${HEADER_PATH}/film_camera.h
+	${SOURCE_PATH}/film_camera.cpp
+	${HEADER_PATH}/environment_camera.h
+	${SOURCE_PATH}/environment_camera.cpp
+)
+SOURCE_GROUP("octoon-caustic\\scene\\camera" FILES ${CAMERA_LIST})
+
+SET(LIGHT_LIST
+	${HEADER_PATH}/light.h
+	${SOURCE_PATH}/light.cpp
+	${HEADER_PATH}/ambient_light.h
+	${SOURCE_PATH}/ambient_light.cpp
+	${HEADER_PATH}/directional_light.h
+	${SOURCE_PATH}/directional_light.cpp
+	${HEADER_PATH}/point_light.h
+	${SOURCE_PATH}/point_light.cpp
+	${HEADER_PATH}/spot_light.h
+	${SOURCE_PATH}/spot_light.cpp
+	${HEADER_PATH}/sphere_light.h
+	${SOURCE_PATH}/sphere_light.cpp
+)
+SOURCE_GROUP("octoon-caustic\\scene\\light" FILES ${LIGHT_LIST})
+
+SET(GEOMETRY_LIST
+	${HEADER_PATH}/geometry.h
+	${SOURCE_PATH}/geometry.cpp
+)
+SOURCE_GROUP("octoon-caustic\\scene\\geometry" FILES ${GEOMETRY_LIST})
 
 SET(SAMPLER_LIST
 	${HEADER_PATH}/sampler.h

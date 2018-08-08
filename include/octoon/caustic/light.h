@@ -13,9 +13,15 @@ namespace octoon
 			Light() noexcept;
 			virtual ~Light() noexcept;
 
+			void setColor(const float color[3]) noexcept;
+			void getColor(float color[3]) const noexcept;
+
 		private:
 			Light(const Light&) noexcept = delete;
 			Light& operator=(const Light&) noexcept = delete;
+
+		private:
+			float color_[3];
 		};
 	}
 }
