@@ -11,14 +11,20 @@ namespace octoon
 	namespace caustic
 	{
         enum class ImageWrap { Repeat, Black, Clamp };
+
         template <typename T>
-        class TextureImage
+        class TexImage
+        {
+        };
+
+        template <typename T>
+        class TexImage2D : TexImage<T>
         {
         public:
-            TextureImage(const RadeonRays::int2 &resolution, const T *data, ImageWrap wrapMode = ImageWrap::Repeat);
+            TexImage2D(const RadeonRays::int2 &resolution, const T *data, ImageWrap wrapMode = ImageWrap::Repeat);
             std::uint32_t width() const { return resolution[0]; }
             std::uint32_t height() const { return resolution[1]; }
-            T lookup(const RadeonRays::int2 &uv) const;
+            T fetch(const RadeonRays::int2 &uv) const;
 
             const ImageWrap wrapMode;
             RadeonRays::int2 resolution;
@@ -43,16 +49,51 @@ namespace octoon
 
 		public:
 			virtual ~Texture() = default;
-			virtual T fetch(std::uint32_t u, std::uint32_t v, std::uint32_t w) const = 0;
 		};
 
-		template<class T>
-		class ConstantTexture : public Texture<T>
+        template<class T>
+		class Texture1D : public Texture<T>
+		{
+		public:
+			Texture1D() {}
+			virtual ~Texture1D() override = default;
+			virtual T fetch(float u) const = 0;
+		};
+
+        template<class T>
+		class Texture2D : public Texture<T>
+		{
+		public:
+			Texture2D() {}
+			virtual ~Texture2D() override = default;
+			virtual T fetch(float u, float v) const = 0;
+		};
+
+        template<class T>
+		class Texture3D : public Texture<T>
+		{
+		public:
+			Texture3D() {}
+			virtual ~Texture3D() override = default;
+			virtual T fetch(float u, float v, float w) const = 0;
+		};
+
+        template<class T>
+		class TextureCube : public Texture<T>
+		{
+		public:
+			TextureCube() {}
+			virtual ~TextureCube() override = default;
+			virtual T fetch(float u, float v, float w) const = 0;
+		};
+
+        template<class T>
+		class ConstantTexture2D : public Texture2D<T>
 		{
 		public:
 			ConstantTexture(const T &value) : value(value) {}
 			virtual ~ConstantTexture() override = default;
-			virtual T fetch(std::uint32_t u, std::uint32_t v, std::uint32_t w) const override
+			virtual T fetch(float u, float v, float w) const override
             {
                 return value;
             }
@@ -62,48 +103,34 @@ namespace octoon
 		};
 
         template<class T>
-		class Texture2D : public Texture<T>
+		class ConstantTexture3D : public Texture3D<T>
 		{
 		public:
-			Texture2D() {}
-			virtual ~Texture2D() override = default;
-			virtual T fetch(std::uint32_t u, std::uint32_t v, std::uint32_t w) const override
+			ConstantTexture(const T &value) : value(value) {}
+			virtual ~ConstantTexture() override = default;
+			virtual T fetch(float u, float v, float w) const override
             {
                 return value;
             }
 
 		private:
-			std::vector<T> value;
+			T value;
 		};
 
+
         template<class T>
-		class Texture3D : public Texture<T>
+		class ImageTexture2D : public Texture2D<T>
 		{
 		public:
-			Texture3D() {}
-			virtual ~Texture3D() override = default;
-			virtual T fetch(std::uint32_t u, std::uint32_t v, std::uint32_t w) const override
+			ImageTexture2D(const TexImage2D & image) : image(tex_image_) {}
+			virtual ~ImageTexture2D() override = default;
+			virtual T fetch(float u, float v, float w) const override
             {
                 return value;
             }
 
 		private:
-			std::vector<T> value;
-		};
-
-        template<class T>
-		class TextureCube : public Texture<T>
-		{
-		public:
-			TextureCube() {}
-			virtual ~TextureCube() override = default;
-			virtual T fetch(std::uint32_t u, std::uint32_t v, std::uint32_t w) const override
-            {
-                return value;
-            }
-
-		private:
-			std::vector<T> value;
+            const TexImage2D & tex_image_;
 		};
 	}
 }
