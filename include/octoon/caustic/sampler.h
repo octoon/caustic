@@ -9,7 +9,7 @@ namespace octoon
     namespace caustic
     {
         template<class T>
-        class Sampler
+        class Interpolation
         {
         public:
 			enum class Wrap : std::uint8_t
@@ -19,43 +19,32 @@ namespace octoon
 				ClampToEdge = 3,
 			};
 
-			enum class Filter : std::uint8_t
-			{
-				Nearest = 0,
-				Linear = 1,
-				NearestMipmapLinear = 2,
-				NearestMipmapNearest = 3,
-				LinearMipmapNearest = 4,
-				LinearMipmapLinear = 5,
-				Anisotropic = 6
-			};
-
 		public:
-			Sampler() noexcept : wrapMode_(Wrap::ClampToEdge) {}
-			virtual ~Sampler() noexcept {}
+			Interpolation() noexcept : wrapMode_(Wrap::ClampToEdge) {}
+			virtual ~Interpolation() noexcept {}
 
 			void setWrapMode(Wrap mode) { wrapMode_ = mode; }
 			Wrap getWrapMode() const { return wrapMode_; }
 
 		public:
-            virtual T sample(const Texture<T>& texels, float u, float lod) = 0;
-            virtual T sample(const Texture<T>& texels, float u, float v, float lod) = 0;
-            virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod) = 0;
+            virtual T sample(const Texture<T>& texels, float u, float lod) noexcept = 0;
+            virtual T sample(const Texture<T>& texels, float u, float v, float lod) noexcept = 0;
+            virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept = 0;
 
 		private:
 			Wrap wrapMode_;
-        };
+		};
 
         template<class T>
-        class NearestNeighborInterpolation : public Sampler<T>
+        class NearestNeighborInterpolation : public Interpolation<T>
         {
         public:
-            virtual T sample(const Texture<T>& texels, float u, float lod)
+            virtual T sample(const Texture<T>& texels, float u, float lod) noexcept
             {
 
             }
 
-            virtual T sample(const Texture<T>& texels, float u, float v, float lod)
+            virtual T sample(const Texture<T>& texels, float u, float v, float lod) noexcept
             {
 				switch (this->getWrapMode())
 				{
@@ -87,7 +76,7 @@ namespace octoon
                 return n;
             }
 
-            virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod)
+            virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept
             {
 				switch (this->getWrapMode())
 				{
@@ -121,6 +110,75 @@ namespace octoon
 				}
             }
         };
+
+		template<class T>
+		class Sampler : public Interpolation<T>
+		{
+		public:
+			enum class Filter : std::uint8_t
+			{
+				Nearest = 0,
+				Linear = 1,
+				NearestMipmapLinear = 2,
+				NearestMipmapNearest = 3,
+				LinearMipmapNearest = 4,
+				LinearMipmapLinear = 5,
+				Anisotropic = 6
+			};
+
+		public:
+			Sampler() noexcept {}
+			virtual ~Sampler() noexcept {}
+
+			void setMinFilter(Filter filter) noexcept(false)
+			{
+				switch (filter)
+				{
+				case Filter::Nearest:              throw std::runtime_error("Not implemented yet.");
+				case Filter::Linear:               throw std::runtime_error("Not implemented yet.");
+				case Filter::NearestMipmapLinear:  throw std::runtime_error("Not implemented yet.");
+				case Filter::NearestMipmapNearest: throw std::runtime_error("Not implemented yet.");
+				case Filter::LinearMipmapNearest:  throw std::runtime_error("Not implemented yet.");
+				case Filter::LinearMipmapLinear:   throw std::runtime_error("Not implemented yet.");
+				default:
+					throw std::runtime_error("Invalid filter");
+				}
+			}
+
+			void setMagFilter(Filter filter) noexcept(false)
+			{
+				switch (filter)
+				{
+				case Filter::Nearest:              interpolation_ = std::make_unique<NearestNeighborInterpolation>();
+				case Filter::Linear:               throw std::runtime_error("Not implemented yet.");
+				case Filter::NearestMipmapLinear:  throw std::runtime_error(R"(Cannot use "NearestMipmapLinear" method directly on this function)");
+				case Filter::NearestMipmapNearest: throw std::runtime_error(R"(Cannot use "NearestMipmapNearest" method directly on this function)");
+				case Filter::LinearMipmapNearest:  throw std::runtime_error(R"(Cannot use "LinearMipmapNearest" method directly on this function)");
+				case Filter::LinearMipmapLinear:   throw std::runtime_error(R"(Cannot use "LinearMipmapLinear" method directly on this function)");
+				default:
+					throw std::runtime_error("Invalid filter");
+				}
+			}
+
+		public:
+			virtual T sample(const Texture<T>& texels, float u, float lod) noexcept override
+			{
+				return interpolation_->sample(texels, u);
+			}
+
+			virtual T sample(const Texture<T>& texels, float u, float v, float lod) noexcept override
+			{
+				return interpolation_->sample(texels, u, v, lod);
+			}
+
+			virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept override
+			{
+				return interpolation_->sample(texels, u, v, w, lod);
+			}
+
+		private:
+			std::unique_ptr<Interpolation<T>> interpolation_;
+		};
     }
 }
 
