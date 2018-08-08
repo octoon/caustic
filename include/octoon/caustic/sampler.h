@@ -176,21 +176,21 @@ namespace octoon
 				return minFilter_->sample(texels, u, v, w, lod);
 			}
 
-			T sample(const Texture<T>& texels, float u, float ddx, float ddy) noexcept
+			T sample(const Texture<T>& texels, float u, float dx, float dy) noexcept
 			{
 				float d = std::max(dx * dx, dy * dy);
 				float lod = std::log2(d);
 				return minFilter_->sample(texels, u, lod);
 			}
 
-			T sample(const Texture<T>& texels, float u, float v, float ddx, float ddy) noexcept
+			T sample(const Texture<T>& texels, float u, float v, float dx, float dy) noexcept
 			{
 				float d = std::max(dx * dx, dy * dy);
 				float lod = std::log2(d);
 				return minFilter_->sample(texels, u, v, lod);
 			}
 
-			T sample(const Texture<T>& texels, float u, float v, float w, float ddx, float ddy) noexcept
+			T sample(const Texture<T>& texels, float u, float v, float w, float dx, float dy) noexcept
 			{
 				float d = std::max(dx * dx, dy * dy);
 				float lod = std::log2(d);
