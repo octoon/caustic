@@ -1,5 +1,6 @@
 #include <octoon/caustic/scene.h>
 #include <octoon/caustic/camera.h>
+#include <octoon/caustic/light.h>
 #include <cassert>
 
 namespace octoon
@@ -43,12 +44,42 @@ namespace octoon
 		}
 
 		void
+		Scene::addLight(Light* light) noexcept
+		{
+			assert(light);
+
+			auto it = std::find(lights_.begin(), lights_.end(), light);
+			if (it == lights_.end())
+			{
+				lights_.push_back(light);
+			}
+		}
+
+		void
+		Scene::removeLight(Light* light) noexcept
+		{
+			assert(light);
+
+			auto it = std::find(lights_.begin(), lights_.end(), light);
+			if (it != lights_.end())
+				lights_.erase(it);
+		}
+
+		const std::vector<Light*>&
+		Scene::getLightList() const noexcept
+		{
+			return lights_;
+		}
+
+		void
 		Scene::addRenderObject(Object* object) noexcept
 		{
 			assert(object);
 
 			if (object->isA<Camera>())
 				this->addCamera(object->downcast<Camera>());
+			else if (object->isA<Light>())
+				this->addLight(object->downcast<Light>());
 			else
 				renderables_.push_back(object);
 		}
@@ -63,6 +94,12 @@ namespace octoon
 				auto it = std::find(cameras_.begin(), cameras_.end(), object->downcast<Camera>());
 				if (it != cameras_.end())
 					cameras_.erase(it);
+			}
+			else if (object->isA<Light>())
+			{
+				auto it = std::find(lights_.begin(), lights_.end(), object->downcast<Light>());
+				if (it != lights_.end())
+					lights_.erase(it);
 			}
 			else
 			{
