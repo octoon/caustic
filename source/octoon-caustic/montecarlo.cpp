@@ -563,7 +563,7 @@ namespace octoon
 				{
 					this->GenerateLightRays(*light);
 
-					api_->QueryIntersection(
+					api_->QueryOcclusion(
 						renderData_.fr_shadowrays,
 						renderData_.numEstimate,
 						renderData_.fr_shadowhits,
