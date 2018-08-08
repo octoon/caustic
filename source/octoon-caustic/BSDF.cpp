@@ -105,10 +105,12 @@ namespace octoon
 				float nv = std::max(0.1f, RadeonRays::dot(V, N));
 
 				float Fd90 = (0.5f + 2 * vh * vh) * roughness;
-				float FdV = 1 + (Fd90 - 1) * pow5(1 - nv);
-				float FdL = 1 + (Fd90 - 1) * pow5(1 - nl);
+				float FdV = lerp(1, Fd90, pow5(1 - nv));
+				float FdL = lerp(1, Fd90, pow5(1 - nl));
 
-				float fresnel = FdV * FdL * (1.0f - 0.3333f * roughness);
+				// lambert = DiffuseColor * NoL / PI
+				// pdf = NoL / PI
+				float fresnel = FdV * FdL * lerp(1.0f, 1.0f / 1.51, roughness);
 
 				return RadeonRays::float3(fresnel, fresnel, fresnel);
 			}
@@ -123,8 +125,9 @@ namespace octoon
 			{
 				auto H = RadeonRays::normalize(L + V);
 
-				float nv = std::abs(RadeonRays::dot(V, N)) + 0.1f;
-				float vh = saturate(RadeonRays::dot(V, L));
+				float nv = saturate(RadeonRays::dot(N, V));
+				float vh = saturate(RadeonRays::dot(V, H));
+				float nh = saturate(RadeonRays::dot(N, H));
 
 				float m = roughness * roughness;
 				float Gv = nl * (nv * (1 - m) + m);
@@ -134,7 +137,10 @@ namespace octoon
 				float Fc = pow5(1 - vh);
 				RadeonRays::float3 F = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
 
-				return F * G * nl * (4 * nl * nv);
+				// Incident light = SampleColor * NoL
+				// Microfacet specular = D*G*F / (4*NoL*NoV) = D*Vis*F
+				// pdf = D * NoH / (4 * VoH)
+				return F * G * nl * (4 * vh / nh);
 			}
 
 			return 0;
@@ -147,7 +153,9 @@ namespace octoon
 			{
 				auto H = RadeonRays::normalize(L + V);
 
-				float nv = std::abs(RadeonRays::dot(V, N)) + 0.1f;
+				float nv = saturate(RadeonRays::dot(N, V));
+				float vh = saturate(RadeonRays::dot(V, H));
+				float nh = saturate(RadeonRays::dot(N, H));
 
 				float m = roughness * roughness;
 				float Gv = nl * (nv * (1 - m) + m);
@@ -158,7 +166,7 @@ namespace octoon
 				RadeonRays::float3 Fr = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
 				RadeonRays::float3 Ft = RadeonRays::float3(1.0f, 1.0f, 1.0f) - Fr;
 
-				return Ft * G * nl * (4 * nl * nv);
+				return Ft * G * nl * (4 * vh / nh);
 			}
 
 			return 0;
@@ -218,7 +226,7 @@ namespace octoon
 				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-				return SpecularBRDF_GGX(N, L, -V, f0, mat.roughness);
+				return SpecularBRDF_GGX(N, L, N, f0, mat.roughness);
 			}
 
 			if (mat.ior > 1.0f)
@@ -228,7 +236,7 @@ namespace octoon
 				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-				return SpecularBTDF_GGX(N, L, -V, f0, mat.roughness) * mat.albedo;
+				return SpecularBTDF_GGX(N, L, N, f0, mat.roughness) * mat.albedo;
 			}
 
 			return DiffuseBRDF(N, L, -V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
