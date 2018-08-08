@@ -12,5 +12,16 @@ namespace octoon
 		Geometry::~Geometry() noexcept
 		{
 		}
+
+		void 
+		Geometry::setMaterial(std::shared_ptr<Material>& material) noexcept
+		{
+		}
+
+		const std::shared_ptr<Material>&
+		Geometry::getMaterial() const noexcept
+		{
+			return material_;
+		}
 	}
 }

@@ -469,7 +469,7 @@ namespace octoon
 		}
 
 		void
-		MonteCarlo::Estimate(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size)
+		MonteCarlo::Estimate(const Scene& scene, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size)
 		{
 			this->GenerateWorkspace(size.x * size.y);
 			this->GenerateNoise(frame, offset, size);
@@ -502,16 +502,19 @@ namespace octoon
 					this->GatherSampling(pass);
 				}
 
-				api_->QueryIntersection(
-					renderData_.fr_shadowrays,
-					renderData_.numEstimate,
-					renderData_.fr_shadowhits,
-					nullptr,
-					nullptr
-				);
+				for (auto& light : scene.getLightList())
+				{
+					api_->QueryIntersection(
+						renderData_.fr_shadowrays,
+						renderData_.numEstimate,
+						renderData_.fr_shadowhits,
+						nullptr,
+						nullptr
+					);
 
-				this->GatherShadowHits();
-				this->GatherLightSamples();
+					this->GatherShadowHits();
+					this->GatherLightSamples();
+				}
 
 				// prepare ray for indirect lighting gathering
 				this->GenerateRays(frame);
@@ -571,7 +574,7 @@ namespace octoon
 		void
 		MonteCarlo::render(const Scene& scene, std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept
 		{
-			this->Estimate(frame, RadeonRays::int2(x, y), RadeonRays::int2(w, h));
+			this->Estimate(scene, frame, RadeonRays::int2(x, y), RadeonRays::int2(w, h));
 		}
 	}
 }

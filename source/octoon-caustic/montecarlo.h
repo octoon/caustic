@@ -75,7 +75,7 @@ namespace octoon
 
 			void ColorTonemapping(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
-			void Estimate(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size);
+			void Estimate(const Scene& scene, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size);
 
 		private:
 			std::uint32_t width_;
