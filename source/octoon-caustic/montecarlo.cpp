@@ -81,8 +81,7 @@ namespace octoon
 
 		bxdf_ = std::make_unique<caustic::BSDF>();
 		tonemapping_ = std::make_unique<caustic::ACES>();
-		randomSampler_ = std::make_unique<caustic::CranleyPatterson>(std::make_unique<caustic::Halton>());
-		randomSampler_->init_random(width_ * height_);
+		sequences_ = std::make_unique<caustic::CranleyPatterson>(std::make_unique<caustic::Halton>(), width_ * height_);
 
 		if (!init_data()) throw std::runtime_error("init_data() fail");
 		if (!init_Gbuffers(w, h)) throw std::runtime_error("init_Gbuffers() fail");
@@ -257,8 +256,8 @@ namespace octoon
 			auto iy = offset.y + i / size.x;
 			auto index = iy * this->width_ + ix;
 
-			float sx = randomSampler_->sample(0, frame, index);
-			float sy = randomSampler_->sample(1, frame, index);
+			float sx = sequences_->sample(0, frame, index);
+			float sy = sequences_->sample(1, frame, index);
 
 			this->renderData_.random[i] = RadeonRays::float2(sx, sy);
 		}

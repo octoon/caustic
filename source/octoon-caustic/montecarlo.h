@@ -99,7 +99,7 @@ namespace octoon
 
 		std::unique_ptr<caustic::BxDF> bxdf_;
 		std::unique_ptr<caustic::Tonemapping> tonemapping_;
-		std::unique_ptr<caustic::CranleyPatterson> randomSampler_;
+		std::unique_ptr<caustic::CranleyPatterson> sequences_;
 
 		std::vector<tinyobj::shape_t> scene_;
 		std::vector<caustic::Material> materials_;
