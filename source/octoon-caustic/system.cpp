@@ -121,7 +121,7 @@ namespace octoon
 				queues_.push_back(this->renderTile(frame, i));
 		}
 
-		bool 
+		bool
 		System::wait_one() noexcept
 		{
 			if (!queues_.empty())

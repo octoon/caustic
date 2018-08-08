@@ -278,13 +278,13 @@ namespace octoon
 				auto ix = offset.x + i % size.x;
 				auto iy = offset.y + i / size.x;
 
-				float x = xstep * ix + (renderData_.random[i].x * 2 - 1) / (float)this->width_ - 1.0f;
-				float y = ystep * iy + (renderData_.random[i].y / (float)this->height_);
+				float x = xstep * ix - 1.0f + (renderData_.random[i].x * 2 - 1) / (float)this->width_;
+				float y = ystep * iy - 1.0f + (renderData_.random[i].y * 2 - 1) / (float)this->height_;
 				float z = 1.0f;
 
 				auto& ray = rays[i];
 				camera.getTranslate(&ray.o.x);
-				ray.d = RadeonRays::float3((x - ray.o.x) * width_ / height_, y - ray.o.y, z - ray.o.z);
+				ray.d = RadeonRays::float3(x * width_ / height_, y, z - ray.o.z);
 				ray.d.normalize();
 				ray.SetMaxT(std::numeric_limits<float>::max());
 				ray.SetTime(0.0f);
