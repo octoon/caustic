@@ -27,9 +27,10 @@ namespace octoon
 			Wrap getWrapMode() const { return wrapMode_; }
 
 		public:
-            virtual T sample(const TexImage1D<T>& texels, float u, float lod) noexcept = 0;
-            virtual T sample(const TexImage2D<T>& texels, float u, float v, float lod) noexcept = 0;
-            virtual T sample(const TexImage3D<T>& texels, float u, float v, float w, float lod) noexcept = 0;
+            virtual T sample(const Texture1D<T>& texels, float u, float lod) noexcept = 0;
+            virtual T sample(const Texture2D<T>& texels, float u, float v, float lod) noexcept = 0;
+            virtual T sample(const Texture2DArray<T>& texels, float u, float v, float w, float lod) noexcept = 0;
+            virtual T sample(const Texture3D<T>& texels, float u, float v, float w, float lod) noexcept = 0;
 
 		private:
 			Wrap wrapMode_;
@@ -39,12 +40,12 @@ namespace octoon
         class NearestNeighborInterpolation : public Interpolation<T>
         {
         public:
-            virtual T sample(const TexImage1D<T>& texels, float u, float lod) noexcept
+            virtual T sample(const Texture1D<T>& texels, float u, float lod) noexcept
             {
-
+            	throw std::runtime_error("Not implemented yet.");
             }
 
-            virtual T sample(const TexImage2D<T>& texels, float u, float v, float lod) noexcept
+            virtual T sample(const Texture2D<T>& texels, float u, float v, float lod) noexcept
             {
 				switch (this->getWrapMode())
 				{
@@ -52,7 +53,7 @@ namespace octoon
 				{
 					auto x = u - std::floor(u);
 					auto y = v - std::floor(v);
-					return texels.fetch((int)std::round(x), (int)std::round(y));
+					return texels.fetch((int)std::round(x * texels.width()), (int)std::round(y * texels.height()));
 				}
 				break;
 				case Wrap::Mirror:
@@ -61,14 +62,14 @@ namespace octoon
 					auto iv = ((std::uint32_t)std::floor(v));
 					auto x = (iu % 2) > 0 ? 1.0f - (u - iu) : (u - iu);
 					auto y = (iv % 2) > 0 ? 1.0f - (v - iv) : (v - iv);
-					return texels.fetch((int)std::round(x), (int)std::round(y));
+					return texels.fetch((int)std::round(x * texels.width()), (int)std::round(y * texels.height()));
 				}
 				break;
 				case Wrap::ClampToEdge:
 				{
 					auto x = clamp(u, 0.f, 1.f);
 					auto y = clamp(v, 0.f, 1.f);
-					return texels.fetch((int)std::round(x), (int)std::round(y));
+					return texels.fetch((int)std::round(x * texels.width()), (int)std::round(y * texels.height()));
 				}
 				break;
 				}
@@ -76,7 +77,12 @@ namespace octoon
                 return n;
             }
 
-            virtual T sample(const TexImage3D<T>& texels, float u, float v, float w, float lod) noexcept
+            virtual T sample(const Texture2DArray<T>& texels, float u, float v, float layer, float lod) noexcept
+            {
+            	throw std::runtime_error("Not implemented yet.");
+            }
+
+            virtual T sample(const Texture3D<T>& texels, float u, float v, float w, float lod) noexcept
             {
 				switch (this->getWrapMode())
 				{
@@ -161,7 +167,7 @@ namespace octoon
 			}
 
 		public:
-			T sample(const Texture<T>& texels, float u, float lod) noexcept override
+			T sample(const Texture1D<T>& texels, float u, float lod) noexcept override
 			{
 				if (lod > 0)
 					return minFilter_->sample(texels, u, lod);
@@ -169,7 +175,7 @@ namespace octoon
 					return magFilter_->sample(texels, u, 0);
 			}
 
-			T sample(const Texture<T>& texels, float u, float v, float lod) noexcept override
+			T sample(const Texture2D<T>& texels, float u, float v, float lod) noexcept override
 			{
 				if (lod > 0)
 					return minFilter_->sample(texels, u, v, lod);
@@ -177,7 +183,15 @@ namespace octoon
 					return magFilter_->sample(texels, u, v, 0);
 			}
 
-			T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept override
+			T sample(const Texture2DArray<T>& texels, float u, float v, float layer, float lod) noexcept override
+			{
+				if (lod > 0)
+					return minFilter_->sample(texels, u, v, layer, lod);
+				else
+					return magFilter_->sample(texels, u, v, layer, 0);
+			}
+
+			T sample(const Texture3D<T>& texels, float u, float v, float w, float lod) noexcept override
 			{
 				if (lod > 0)
 					return minFilter_->sample(texels, u, v, w, lod);
@@ -185,21 +199,28 @@ namespace octoon
 					return magFilter_->sample(texels, u, v, w, 0);
 			}
 
-			T sample(const Texture<T>& texels, float u, float dx, float dy) noexcept
+			T sample(const Texture1D<T>& texels, float u, float dx, float dy) noexcept
 			{
 				float d = std::max(dx, dy);
 				float lod = std::log2(d * d) * 0.5f;
 				return this->sample(texels, u, lod);
 			}
 
-			T sample(const Texture<T>& texels, float u, float v, float dx, float dy) noexcept
+			T sample(const Texture2D<T>& texels, float u, float v, float dx, float dy) noexcept
 			{
 				float d = std::max(dx, dy);
 				float lod = std::log2(d * d) * 0.5f;
 				return this->sample(texels, u, v, lod);
 			}
 
-			T sample(const Texture<T>& texels, float u, float v, float w, float dx, float dy) noexcept
+			T sample(const Texture2DArray<T>& texels, float u, float v, float layer, float dx, float dy) noexcept
+			{
+				float d = std::max(dx, dy);
+				float lod = std::log2(d * d) * 0.5f;
+				return this->sample(texels, u, v, layer, lod);
+			}
+
+			T sample(const Texture3D<T>& texels, float u, float v, float w, float dx, float dy) noexcept
 			{
 				float d = std::max(dx, dy);
 				float lod = std::log2(d * d) * 0.5f;
