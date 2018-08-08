@@ -19,7 +19,7 @@ namespace octoon
 				Cube = 3,
 				CubeArray = 4,
 				Latlong = 5, // environment hdri
-				FishEye
+				FishEye = 6
 			};
 
 		public:
