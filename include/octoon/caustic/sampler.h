@@ -163,38 +163,47 @@ namespace octoon
 		public:
 			T sample(const Texture<T>& texels, float u, float lod) noexcept override
 			{
-				return minFilter_->sample(texels, u);
+				if (lod > 0)
+					return minFilter_->sample(texels, u, lod);
+				else
+					return magFilter_->sample(texels, u, lod);
 			}
 
 			T sample(const Texture<T>& texels, float u, float v, float lod) noexcept override
 			{
-				return minFilter_->sample(texels, u, v, lod);
+				if (lod > 0)
+					return minFilter_->sample(texels, u, v, lod);
+				else
+					return magFilter_->sample(texels, u, v, lod);
 			}
 
 			T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept override
 			{
-				return minFilter_->sample(texels, u, v, w, lod);
+				if (lod > 0)
+					return minFilter_->sample(texels, u, v, w, lod);
+				else
+					return magFilter_->sample(texels, u, v, w, lod);
 			}
 
 			T sample(const Texture<T>& texels, float u, float dx, float dy) noexcept
 			{
 				float d = std::max(dx, dy);
 				float lod = std::log2(d * d) * 0.5f;
-				return (lod > 0) ? minFilter_->sample(texels, u, lod) : magFilter_->sample(texels, u, lod);
+				return this->sample(texels, u, lod);
 			}
 
 			T sample(const Texture<T>& texels, float u, float v, float dx, float dy) noexcept
 			{
 				float d = std::max(dx, dy);
 				float lod = std::log2(d * d) * 0.5f;
-				return (lod > 0) ? minFilter_->sample(texels, u, v, lod) : magFilter_->sample(texels, u, v, lod);
+				return this->sample(texels, u, v, lod);
 			}
 
 			T sample(const Texture<T>& texels, float u, float v, float w, float dx, float dy) noexcept
 			{
 				float d = std::max(dx, dy);
 				float lod = std::log2(d * d) * 0.5f;
-				return (lod > 0) ? minFilter_->sample(texels, u, v, w, lod) : magFilter_->sample(texels, u, v, w, lod);
+				return this->sample(texels, u, v, w, lod);
 			}
 
 		private:
