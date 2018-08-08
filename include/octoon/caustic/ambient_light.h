@@ -11,6 +11,7 @@ namespace octoon
 		{
 		public:
 			AmbientLight() noexcept;
+			AmbientLight(const float color[3]) noexcept;
 			virtual ~AmbientLight() noexcept;
 
 		private:

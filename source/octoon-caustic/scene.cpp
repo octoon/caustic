@@ -16,7 +16,7 @@ namespace octoon
 		}
 
 		void
-		Scene::addCamera(Camera* camera) noexcept
+		Scene::addCamera(const CameraPtr& camera) noexcept
 		{
 			assert(camera);
 
@@ -28,7 +28,7 @@ namespace octoon
 		}
 
 		void
-		Scene::removeCamera(Camera* camera) noexcept
+		Scene::removeCamera(const CameraPtr& camera) noexcept
 		{
 			assert(camera);
 
@@ -37,14 +37,14 @@ namespace octoon
 				cameras_.erase(it);
 		}
 
-		const std::vector<Camera*>&
+		const std::vector<Scene::CameraPtr>&
 		Scene::getCameraList() const noexcept
 		{
 			return cameras_;
 		}
 
 		void
-		Scene::addLight(Light* light) noexcept
+		Scene::addLight(const LightPtr& light) noexcept
 		{
 			assert(light);
 
@@ -56,7 +56,7 @@ namespace octoon
 		}
 
 		void
-		Scene::removeLight(Light* light) noexcept
+		Scene::removeLight(const LightPtr& light) noexcept
 		{
 			assert(light);
 
@@ -65,39 +65,39 @@ namespace octoon
 				lights_.erase(it);
 		}
 
-		const std::vector<Light*>&
+		const std::vector<Scene::LightPtr>&
 		Scene::getLightList() const noexcept
 		{
 			return lights_;
 		}
 
 		void
-		Scene::addRenderObject(Object* object) noexcept
+		Scene::addRenderObject(const ObjectPtr& object) noexcept
 		{
 			assert(object);
 
 			if (object->isA<Camera>())
-				this->addCamera(object->downcast<Camera>());
+				this->addCamera(object->downcast_pointer<Camera>());
 			else if (object->isA<Light>())
-				this->addLight(object->downcast<Light>());
+				this->addLight(object->downcast_pointer<Light>());
 			else
 				renderables_.push_back(object);
 		}
 
 		void
-		Scene::removeRenderObject(Object* object) noexcept
+		Scene::removeRenderObject(const ObjectPtr& object) noexcept
 		{
 			assert(object);
 
 			if (object->isA<Camera>())
 			{
-				auto it = std::find(cameras_.begin(), cameras_.end(), object->downcast<Camera>());
+				auto it = std::find(cameras_.begin(), cameras_.end(), object->downcast_pointer<Camera>());
 				if (it != cameras_.end())
 					cameras_.erase(it);
 			}
 			else if (object->isA<Light>())
 			{
-				auto it = std::find(lights_.begin(), lights_.end(), object->downcast<Light>());
+				auto it = std::find(lights_.begin(), lights_.end(), object->downcast_pointer<Light>());
 				if (it != lights_.end())
 					lights_.erase(it);
 			}
@@ -109,7 +109,7 @@ namespace octoon
 			}
 		}
 
-		const std::vector<Object*>&
+		const std::vector<Scene::ObjectPtr>&
 		Scene::getRenderObjects() const noexcept
 		{
 			return renderables_;

@@ -14,6 +14,7 @@
 #include <octoon/caustic/BxDF.h>
 #include <octoon/caustic/tonemapping.h>
 #include <octoon/caustic/material.h>
+#include <octoon/caustic/light.h>
 
 namespace octoon
 {
@@ -68,7 +69,7 @@ namespace octoon
 			void GatherSampling(std::int32_t pass) noexcept;
 			void GatherHits() noexcept;
 			void GatherShadowHits() noexcept;
-			void GatherLightSamples() noexcept;
+			void GatherLightSamples(const Light& light) noexcept;
 
 			void AccumSampling(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 			void AdaptiveSampling() noexcept;
@@ -87,8 +88,6 @@ namespace octoon
 			RadeonRays::IntersectionApi* api_;
 
 			RadeonRays::float3 camera_;
-			RadeonRays::float3 skyColor_;
-			RadeonRays::float3 light_;
 
 			std::vector<std::uint32_t> ldr_;
 			std::vector<RadeonRays::float3> hdr_;

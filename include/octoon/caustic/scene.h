@@ -2,6 +2,7 @@
 #define OCTOON_CAUSTIC_SCENE_H_
 
 #include <vector>
+#include <memory>
 #include <octoon/caustic/object.h>
 
 namespace octoon
@@ -11,29 +12,34 @@ namespace octoon
 		class Scene final
 		{
 		public:
+			typedef std::shared_ptr<class Camera> CameraPtr;
+			typedef std::shared_ptr<class Light> LightPtr;
+			typedef std::shared_ptr<class Object> ObjectPtr;
+
+		public:
 			Scene() noexcept;
 			~Scene() noexcept;
 
-			void addCamera(class Camera* camera) noexcept;
-			void removeCamera(Camera* camera) noexcept;
-			const std::vector<Camera*>& getCameraList() const noexcept;
+			void addCamera(const CameraPtr& camera) noexcept;
+			void removeCamera(const CameraPtr& camera) noexcept;
+			const std::vector<CameraPtr>& getCameraList() const noexcept;
 
-			void addLight(class Light* object) noexcept;
-			void removeLight(Light* object) noexcept;
-			const std::vector<Light*>& getLightList() const noexcept;
+			void addLight(const LightPtr& object) noexcept;
+			void removeLight(const LightPtr& object) noexcept;
+			const std::vector<LightPtr>& getLightList() const noexcept;
 
-			void addRenderObject(Object* object) noexcept;
-			void removeRenderObject(Object* object) noexcept;
-			const std::vector<Object*>& getRenderObjects() const noexcept;
+			void addRenderObject(const ObjectPtr& object) noexcept;
+			void removeRenderObject(const ObjectPtr& object) noexcept;
+			const std::vector<ObjectPtr>& getRenderObjects() const noexcept;
 
 		private:
 			Scene(const Scene&) = delete;
 			Scene& operator=(const Scene&) = delete;
 
 		private:
-			std::vector<Camera*> cameras_;
-			std::vector<Light*> lights_;
-			std::vector<Object*> renderables_;
+			std::vector<CameraPtr> cameras_;
+			std::vector<LightPtr> lights_;
+			std::vector<ObjectPtr> renderables_;
 		};
 	}
 }

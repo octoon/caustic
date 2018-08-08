@@ -1,11 +1,14 @@
 #ifndef OCTOON_CAUSTIC_OBJECT_H_
 #define OCTOON_CAUSTIC_OBJECT_H_
 
+#include <memory>
+#include <assert.h>
+
 namespace octoon
 {
 	namespace caustic
 	{
-		class Object
+		class Object : public std::enable_shared_from_this<Object>
 		{
 		public:
 			Object() noexcept;
@@ -25,6 +28,13 @@ namespace octoon
 			T* downcast()
 			{
 				return dynamic_cast<T*>(this);
+			}
+
+			template<typename T>
+			std::shared_ptr<T> downcast_pointer() noexcept
+			{
+				assert(this->isA<T>());
+				return std::dynamic_pointer_cast<T>(this->shared_from_this());
 			}
 
 		private:

@@ -8,6 +8,11 @@ namespace octoon
 		{
 		}
 
+		AmbientLight::AmbientLight(const float color[3]) noexcept
+		{
+			this->setColor(color);
+		}
+
 		AmbientLight::~AmbientLight() noexcept
 		{
 		}

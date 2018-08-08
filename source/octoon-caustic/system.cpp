@@ -1,4 +1,5 @@
 #include <octoon/caustic/system.h>
+#include <octoon/caustic/ambient_light.h>
 #include "montecarlo.h"
 
 namespace octoon
@@ -37,7 +38,11 @@ namespace octoon
 			height_ = h;
 			tileWidth_ = (width_ + tileSize_ - 1) / tileSize_;
 			tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
+
+			float color[3] = { 2.0f, 2.0f, 2.0f };
+
 			scene_ = std::make_shared<Scene>();
+			scene_->addLight(std::make_shared<AmbientLight>(color));
 
  			thread_ = std::thread(std::bind(&System::thread, this));
 		}
