@@ -15,6 +15,7 @@
 #include <octoon/caustic/tonemapping.h>
 #include <octoon/caustic/material.h>
 #include <octoon/caustic/light.h>
+#include <octoon/caustic/camera.h>
 
 namespace octoon
 {
@@ -63,7 +64,7 @@ namespace octoon
 
 			void GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 			void GenerateRays() noexcept;
-			void GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
+			void GenerateCamera(const Camera& camera, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 			void GenerateLightRays(const Light& light) noexcept;
 
 			void GatherFirstSampling(std::atomic_uint32_t& sampleCounter) noexcept;
@@ -77,7 +78,7 @@ namespace octoon
 
 			void ColorTonemapping(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
-			void Estimate(const Scene& scene, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size);
+			void Estimate(const Camera& camera, const Scene& scene, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size);
 
 		private:
 			std::uint32_t width_;
@@ -87,8 +88,6 @@ namespace octoon
 			std::int32_t tileNums_;
 
 			RadeonRays::IntersectionApi* api_;
-
-			RadeonRays::float3 camera_;
 
 			std::vector<std::uint32_t> ldr_;
 			std::vector<RadeonRays::float3> hdr_;

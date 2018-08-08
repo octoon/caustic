@@ -36,8 +36,7 @@ namespace octoon
 		}
 
 		MonteCarlo::MonteCarlo() noexcept
-			: camera_(0.f, 1.f, 3.f, 1000.f)
-			, numBounces_(6)
+			: numBounces_(6)
 			, tileNums_(0)
 			, width_(0)
 			, height_(0)
@@ -264,7 +263,7 @@ namespace octoon
 		}
 
 		void
-		MonteCarlo::GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
+		MonteCarlo::GenerateCamera(const Camera& camera, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept
 		{
 			RadeonRays::ray* rays = nullptr;
 			RadeonRays::Event* e = nullptr;
@@ -284,8 +283,8 @@ namespace octoon
 				float z = 1.0f;
 
 				auto& ray = rays[i];
-				ray.o = this->camera_;
-				ray.d = RadeonRays::float3((x - this->camera_.x) * width_ / height_, y - this->camera_.y, z - this->camera_.z);
+				camera.getTranslate(&ray.o.x);
+				ray.d = RadeonRays::float3((x - ray.o.x) * width_ / height_, y - ray.o.y, z - ray.o.z);
 				ray.d.normalize();
 				ray.SetMaxT(std::numeric_limits<float>::max());
 				ray.SetTime(0.0f);
@@ -526,12 +525,12 @@ namespace octoon
 		}
 
 		void
-		MonteCarlo::Estimate(const Scene& scene, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size)
+		MonteCarlo::Estimate(const Camera& camera, const Scene& scene, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size)
 		{
 			this->GenerateWorkspace(size.x * size.y);
 			this->GenerateNoise(frame, offset, size);
 
-			this->GenerateFirstRays(frame, offset, size);
+			this->GenerateCamera(camera, offset, size);
 
 			for (std::int32_t pass = 0; pass < numBounces_; pass++)
 			{
@@ -633,7 +632,9 @@ namespace octoon
 		void
 		MonteCarlo::render(const Scene& scene, std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept
 		{
-			this->Estimate(scene, frame, RadeonRays::int2(x, y), RadeonRays::int2(w, h));
+			auto& cameras = scene.getCameraList();
+			for (auto& camera : cameras)
+				this->Estimate(*camera, scene, frame, RadeonRays::int2(x, y), RadeonRays::int2(w, h));
 		}
 	}
 }

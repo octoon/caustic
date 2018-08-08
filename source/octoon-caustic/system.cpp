@@ -1,5 +1,6 @@
 #include <octoon/caustic/system.h>
 #include <octoon/caustic/ambient_light.h>
+#include <octoon/caustic/film_camera.h>
 #include "montecarlo.h"
 
 namespace octoon
@@ -40,9 +41,14 @@ namespace octoon
 			tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
 
 			float color[3] = { 2.0f, 2.0f, 2.0f };
+			float transform[4][4] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0.f, 1.f, 3.f,1 };
+
+			auto camera = std::make_shared<FilmCamera>();
+			camera->setTransform(transform, transform);
 
 			scene_ = std::make_shared<Scene>();
-			scene_->addLight(std::make_shared<AmbientLight>(color));
+			scene_->addRenderObject(std::make_shared<AmbientLight>(color));
+			scene_->addRenderObject(std::move(camera));
 
  			thread_ = std::thread(std::bind(&System::thread, this));
 		}

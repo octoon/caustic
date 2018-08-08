@@ -1,11 +1,13 @@
 #ifndef OCTOON_CAUSTIC_FILM_CAMERA_H_
 #define OCTOON_CAUSTIC_FILM_CAMERA_H_
 
+#include <octoon/caustic/camera.h>
+
 namespace octoon
 {
 	namespace caustic
 	{
-		class FilmCamera
+		class FilmCamera : public Camera
 		{
 		public:
 			FilmCamera() noexcept;

@@ -25,8 +25,8 @@ namespace octoon
 		void 
 		Object::setTransform(const float m[4][4], const float minv[4][4]) noexcept
 		{
-			std::memcpy(transform_, m, sizeof(m));
-			std::memcpy(transformInverse_, minv, sizeof(minv));
+			std::memcpy(transform_, m, sizeof(float) * 4 * 4);
+			std::memcpy(transformInverse_, minv, sizeof(float) * 4 * 4);
 		}
 
 		const float*
@@ -39,6 +39,14 @@ namespace octoon
 		Object::getTransformInverse() const noexcept
 		{
 			return (const float*)transformInverse_;
+		}
+
+		void
+		Object::getTranslate(float translate[3]) const noexcept
+		{
+			translate[0] = transform_[3][0];
+			translate[1] = transform_[3][1];
+			translate[2] = transform_[3][2];
 		}
 	}
 }

@@ -18,6 +18,8 @@ namespace octoon
 			const float* getTransform() const noexcept;
 			const float* getTransformInverse() const noexcept;
 
+			void getTranslate(float translate[3]) const noexcept;
+
 			template<typename T>
 			bool isA()
 			{
