@@ -89,8 +89,8 @@ SOURCE_GROUP("octoon-caustic\\texture" FILES ${TEXTURE_LIST})
 SET(PIPELINE_LIST
 	${SOURCE_PATH}/montecarlo.h
 	${SOURCE_PATH}/montecarlo.cpp
-	${SOURCE_PATH}/montecarlo_thread.h
-	${SOURCE_PATH}/montecarlo_thread.cpp
+	${HEADER_PATH}/pipeline.h
+	${SOURCE_PATH}/pipeline.cpp
 )
 SOURCE_GROUP("octoon-caustic\\pipeline" FILES ${PIPELINE_LIST})
 
@@ -103,6 +103,8 @@ SET(TONEMAPPING_LIST
 SOURCE_GROUP("octoon-caustic\\tonemapping" FILES ${TONEMAPPING_LIST})
 
 SET(OCTOON_LIST
+	${HEADER_PATH}/system.h
+	${SOURCE_PATH}/system.cpp
 	${SOURCE_PATH}/main.cpp
 	${SOURCE_PATH}/tiny_obj_loader.cpp
 	${SOURCE_PATH}/tiny_obj_loader.h

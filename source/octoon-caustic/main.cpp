@@ -6,7 +6,7 @@
 #include <GLFW/glfw3.h>
 #include <GL/GL.h>
 
-#include "montecarlo_thread.h"
+#include <octoon/caustic/system.h>
 
 void dumpTGA(std::ostream& stream, std::uint8_t pixesl[], std::uint32_t width, std::uint32_t height, std::uint8_t channel) noexcept
 {
@@ -80,7 +80,7 @@ int main(int argc, const char* argv[])
 
 		glEnable(GL_TEXTURE_2D);
 
-		octoon::MonteCarloThread engine(width, height);
+		octoon::caustic::System engine(width, height);
 
 		std::time_t begin_time = std::clock();
 
@@ -88,20 +88,10 @@ int main(int argc, const char* argv[])
 
 		for (std::uint32_t frame = 1; frame < frame_num; frame++)
 		{
-			std::uint16_t tileSize = 512;
-			std::uint16_t tileNumsX = width / tileSize + (width % tileSize > 0 ? 1 : 0);
-			std::uint16_t tileNumsY = height / tileSize + (height % tileSize > 0 ? 1 : 0);
+			engine.render(frame);
 
-			std::vector<int> tiles(tileNumsX * tileNumsY);
-			std::vector<std::future<std::uint32_t>> queues;
-
-			for (std::int32_t i = 0; i < tileNumsX * tileNumsY; i++)
-				queues.push_back(engine.renderTile(frame, i));
-
-			for (auto& it : queues)
+			while (engine.wait_one())
 			{
-				it.wait();
-
 				if (::glfwWindowShouldClose(window))
 					goto exit;
 
