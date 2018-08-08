@@ -18,6 +18,20 @@ namespace octoon
         };
 
         template <typename T>
+        class TexImage1D : TexImage<T>
+        {
+        public:
+            TexImage1D(const int &resolution, const T *data, ImageWrap wrapMode = ImageWrap::Repeat);
+            std::uint32_t width() const { return resolution; }
+            T fetch(const int &u) const;
+
+            const ImageWrap wrapMode;
+            int resolution;
+            std::vector<T> data;
+        };
+
+
+        template <typename T>
         class TexImage2D : TexImage<T>
         {
         public:
@@ -28,6 +42,21 @@ namespace octoon
 
             const ImageWrap wrapMode;
             RadeonRays::int2 resolution;
+            std::vector<T> data;
+        };
+
+        template <typename T>
+        class TexImage3D : TexImage<T>
+        {
+        public:
+            TexImage3D(const RadeonRays::int3 &resolution, const T *data, ImageWrap wrapMode = ImageWrap::Repeat);
+            std::uint32_t width() const { return resolution[0]; }
+            std::uint32_t height() const { return resolution[1]; }
+            std::uint32_t length() const { return resolution[2]; }
+            T fetch(const RadeonRays::int3 &uvw) const;
+
+            const ImageWrap wrapMode;
+            RadeonRays::int3 resolution;
             std::vector<T> data;
         };
 

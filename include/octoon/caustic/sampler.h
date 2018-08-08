@@ -27,9 +27,9 @@ namespace octoon
 			Wrap getWrapMode() const { return wrapMode_; }
 
 		public:
-            virtual T sample(const Texture<T>& texels, float u, float lod) noexcept = 0;
-            virtual T sample(const Texture<T>& texels, float u, float v, float lod) noexcept = 0;
-            virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept = 0;
+            virtual T sample(const TexImage1D<T>& texels, float u, float lod) noexcept = 0;
+            virtual T sample(const TexImage2D<T>& texels, float u, float v, float lod) noexcept = 0;
+            virtual T sample(const TexImage3D<T>& texels, float u, float v, float w, float lod) noexcept = 0;
 
 		private:
 			Wrap wrapMode_;
@@ -39,12 +39,12 @@ namespace octoon
         class NearestNeighborInterpolation : public Interpolation<T>
         {
         public:
-            virtual T sample(const Texture<T>& texels, float u, float lod) noexcept
+            virtual T sample(const TexImage1D<T>& texels, float u, float lod) noexcept
             {
 
             }
 
-            virtual T sample(const Texture<T>& texels, float u, float v, float lod) noexcept
+            virtual T sample(const TexImage2D<T>& texels, float u, float v, float lod) noexcept
             {
 				switch (this->getWrapMode())
 				{
@@ -76,7 +76,7 @@ namespace octoon
                 return n;
             }
 
-            virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept
+            virtual T sample(const TexImage3D<T>& texels, float u, float v, float w, float lod) noexcept
             {
 				switch (this->getWrapMode())
 				{
