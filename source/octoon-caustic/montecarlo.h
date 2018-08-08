@@ -62,8 +62,9 @@ namespace octoon
 			void GenerateWorkspace(std::int32_t numEstimate);
 
 			void GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
-			void GenerateRays(std::uint32_t frame) noexcept;
+			void GenerateRays() noexcept;
 			void GenerateFirstRays(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
+			void GenerateLightRays(const Light& light) noexcept;
 
 			void GatherFirstSampling(std::atomic_uint32_t& sampleCounter) noexcept;
 			void GatherSampling(std::int32_t pass) noexcept;

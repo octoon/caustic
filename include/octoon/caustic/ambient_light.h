@@ -14,6 +14,8 @@ namespace octoon
 			AmbientLight(const float color[3]) noexcept;
 			virtual ~AmbientLight() noexcept;
 
+			virtual void sample(const float ro[3], const float norm[3], const Material& mat, const float Xi[2], float L[3]) const noexcept override;
+
 		private:
 			AmbientLight(const AmbientLight&) noexcept = delete;
 			AmbientLight& operator=(const AmbientLight&) noexcept = delete;

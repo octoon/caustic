@@ -30,5 +30,13 @@ namespace octoon
 			color[1] = color_[1];
 			color[2] = color_[2];
 		}
+
+		void 
+		Light::sample(const float ro[3], const float norm[3], const Material& mat, const float Xi[2], float L[3]) const noexcept
+		{
+			L[0] = 0.0f;
+			L[1] = 0.0f;
+			L[2] = 0.0f;
+		}
 	}
 }
