@@ -18,6 +18,10 @@ namespace octoon
 			void removeCamera(Camera* camera) noexcept;
 			const std::vector<Camera*>& getCameraList() const noexcept;
 
+			void addLight(class Light* object) noexcept;
+			void removeLight(Light* object) noexcept;
+			const std::vector<Light*>& getLightList() const noexcept;
+
 			void addRenderObject(Object* object) noexcept;
 			void removeRenderObject(Object* object) noexcept;
 			const std::vector<Object*>& getRenderObjects() const noexcept;
@@ -28,6 +32,7 @@ namespace octoon
 
 		private:
 			std::vector<Camera*> cameras_;
+			std::vector<Light*> lights_;
 			std::vector<Object*> renderables_;
 		};
 	}

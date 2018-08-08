@@ -37,6 +37,8 @@ namespace octoon
 			height_ = h;
 			tileWidth_ = (width_ + tileSize_ - 1) / tileSize_;
 			tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
+			scene_ = std::make_shared<Scene>();
+
  			thread_ = std::thread(std::bind(&System::thread, this));
 		}
 
@@ -62,7 +64,7 @@ namespace octoon
 
 			std::packaged_task<std::uint32_t()> task([=]()
 			{
-				pipeline_->render(frame,
+				pipeline_->render(*scene_, frame,
 					x, y,
 					std::min(tileSize_, static_cast<std::int32_t>(width_ - x)),
 					std::min(tileSize_, static_cast<std::int32_t>(height_ - y)));
@@ -84,7 +86,7 @@ namespace octoon
 		{
 			std::packaged_task<std::uint32_t()> task([=]()
 			{
-				pipeline_->render(frame,
+				pipeline_->render(*scene_, frame,
 					0, 0,
 					width_, height_
 				);
