@@ -14,6 +14,12 @@ namespace octoon
 		{
 		}
 
+		CranleyPatterson::CranleyPatterson(std::unique_ptr<Sequences>&& seq, std::uint32_t size) noexcept
+			: sequences_(std::move(seq))
+		{
+			this->init_random(size);
+		}
+
 		CranleyPatterson::~CranleyPatterson() noexcept
 		{
 		}

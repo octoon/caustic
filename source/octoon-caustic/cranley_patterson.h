@@ -15,6 +15,7 @@ namespace octoon
 		public:
 			CranleyPatterson() noexcept;
 			CranleyPatterson(std::unique_ptr<Sequences>&& seq) noexcept;
+			CranleyPatterson(std::unique_ptr<Sequences>&& seq, std::uint32_t size) noexcept;
 			~CranleyPatterson() noexcept;
 
 			void setSequences(std::unique_ptr<Sequences>&& seq) noexcept;
