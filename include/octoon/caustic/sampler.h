@@ -134,7 +134,7 @@ namespace octoon
 			{
 				switch (filter)
 				{
-				case Filter::Nearest:              throw std::runtime_error("Not implemented yet.");
+				case Filter::Nearest:              minFilter_ = std::make_unique<NearestNeighborInterpolation>(); break;
 				case Filter::Linear:               throw std::runtime_error("Not implemented yet.");
 				case Filter::NearestMipmapLinear:  throw std::runtime_error("Not implemented yet.");
 				case Filter::NearestMipmapNearest: throw std::runtime_error("Not implemented yet.");
@@ -149,7 +149,7 @@ namespace octoon
 			{
 				switch (filter)
 				{
-				case Filter::Nearest:              interpolation_ = std::make_unique<NearestNeighborInterpolation>();
+				case Filter::Nearest:              magFilter_ = std::make_unique<NearestNeighborInterpolation>(); break;
 				case Filter::Linear:               throw std::runtime_error("Not implemented yet.");
 				case Filter::NearestMipmapLinear:  throw std::runtime_error(R"(Cannot use "NearestMipmapLinear" method directly on this function)");
 				case Filter::NearestMipmapNearest: throw std::runtime_error(R"(Cannot use "NearestMipmapNearest" method directly on this function)");
@@ -161,23 +161,44 @@ namespace octoon
 			}
 
 		public:
-			virtual T sample(const Texture<T>& texels, float u, float lod) noexcept override
+			T sample(const Texture<T>& texels, float u, float lod) noexcept override
 			{
-				return interpolation_->sample(texels, u);
+				return minFilter_->sample(texels, u);
 			}
 
-			virtual T sample(const Texture<T>& texels, float u, float v, float lod) noexcept override
+			T sample(const Texture<T>& texels, float u, float v, float lod) noexcept override
 			{
-				return interpolation_->sample(texels, u, v, lod);
+				return minFilter_->sample(texels, u, v, lod);
 			}
 
-			virtual T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept override
+			T sample(const Texture<T>& texels, float u, float v, float w, float lod) noexcept override
 			{
-				return interpolation_->sample(texels, u, v, w, lod);
+				return minFilter_->sample(texels, u, v, w, lod);
+			}
+
+			T sample(const Texture<T>& texels, float u, float ddx, float ddy) noexcept
+			{
+				float d = std::max(dx * dx, dy * dy);
+				float lod = std::log2(d);
+				return minFilter_->sample(texels, u, lod);
+			}
+
+			T sample(const Texture<T>& texels, float u, float v, float ddx, float ddy) noexcept
+			{
+				float d = std::max(dx * dx, dy * dy);
+				float lod = std::log2(d);
+				return minFilter_->sample(texels, u, v, lod);
+			}
+
+			T sample(const Texture<T>& texels, float u, float v, float w, float ddx, float ddy) noexcept
+			{
+				float d = std::max(dx * dx, dy * dy);
+				float lod = std::log2(d);
+				return minFilter_->sample(texels, u, v, w, lod);
 			}
 
 		private:
-			std::unique_ptr<Interpolation<T>> interpolation_;
+			std::unique_ptr<Interpolation<T>> minFilter_;
 		};
     }
 }
