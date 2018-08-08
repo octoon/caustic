@@ -199,6 +199,7 @@ namespace octoon
 
 		private:
 			std::unique_ptr<Interpolation<T>> minFilter_;
+			std::unique_ptr<Interpolation<T>> magFilter_;
 		};
     }
 }
