@@ -192,22 +192,24 @@ namespace octoon
 		}
 
 		RadeonRays::float3
-		BSDF::bsdf(const RadeonRays::float3& V, RadeonRays::float3 N, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		BSDF::sample(const RadeonRays::float3& V, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) noexcept
 		{
+			RadeonRays::float3 n = N;
+
 			if (RadeonRays::dot(N, V) > 0.0f)
-				N = -N;
+				n = -n;
 
 			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
-				return LobeDirection(RadeonRays::normalize(reflect(V, N)), mat.roughness, Xi);
+				return LobeDirection(RadeonRays::normalize(reflect(V, n)), mat.roughness, Xi);
 
 			if (mat.ior > 1.0f)
-				return RadeonRays::normalize(refract(V, N, 1.0f / mat.ior));
+				return RadeonRays::normalize(refract(V, n, 1.0f / mat.ior));
 
-			return CosineDirection(N, Xi);
+			return CosineDirection(n, Xi);
 		}
 
 		RadeonRays::float3
-		BSDF::bsdf_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		BSDF::sample_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) noexcept
 		{
 			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
 			{

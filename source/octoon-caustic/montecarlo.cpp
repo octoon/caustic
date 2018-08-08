@@ -326,7 +326,7 @@ namespace octoon
 						auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 						auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-						RadeonRays::float3 L = bxdf_->bsdf(renderData_.rays[i].d, norm, mat, renderData_.random[i]);
+						RadeonRays::float3 L = bxdf_->sample(renderData_.rays[i].d, norm, mat, renderData_.random[i]);
 						if (mat.ior <= 1.0f)
 						{
 							if (RadeonRays::dot(norm, L) < 0.0f)
@@ -335,7 +335,7 @@ namespace octoon
 
 						assert(std::isfinite(L.x + L.y + L.z));
 
-						renderData_.weights[i] = bxdf_->bsdf_weight(renderData_.rays[i].d, norm, L, mat, renderData_.random[i]);
+						renderData_.weights[i] = bxdf_->sample_weight(renderData_.rays[i].d, norm, L, mat, renderData_.random[i]);
 
 						auto& ray = renderData_.rays[i];
 						ray.d = L;
@@ -381,8 +381,7 @@ namespace octoon
 						auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 						auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-						float L[3];
-						light.sample(&ro.x, &norm.x, mat, &renderData_.random[i].x, L);
+						RadeonRays::float3 L = light.sample(ro, norm, mat, renderData_.random[i].x);
 						assert(std::isfinite(L[0] + L[1] + L[2]));
 
 						if (L[0] + L[1] + L[2])

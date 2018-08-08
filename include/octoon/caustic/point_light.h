@@ -13,7 +13,7 @@ namespace octoon
 			PointLight() noexcept;
 			virtual ~PointLight() noexcept;
 
-			virtual void sample(const float ro[3], const float norm[3], const Material& mat, const float Xi[2], float L[3]) const noexcept override;
+			virtual RadeonRays::float3 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept override;
 
 		private:
 			PointLight(const PointLight&) noexcept = delete;

@@ -31,12 +31,10 @@ namespace octoon
 			color[2] = color_[2];
 		}
 
-		void 
-		Light::sample(const float ro[3], const float norm[3], const Material& mat, const float Xi[2], float L[3]) const noexcept
+		RadeonRays::float3
+		Light::sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
-			L[0] = 0.0f;
-			L[1] = 0.0f;
-			L[2] = 0.0f;
+			return RadeonRays::float3(0, 0, 0);
 		}
 	}
 }

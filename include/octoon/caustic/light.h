@@ -17,7 +17,7 @@ namespace octoon
 			void setColor(const float color[3]) noexcept;
 			void getColor(float color[3]) const noexcept;
 
-			virtual void sample(const float ro[3], const float norm[3], const Material& mat, const float Xi[2], float L[3]) const noexcept;
+			virtual RadeonRays::float3 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept;
 
 		private:
 			Light(const Light&) noexcept = delete;

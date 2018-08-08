@@ -12,17 +12,15 @@ namespace octoon
 		{
 		}
 
-		void 
-		PointLight::sample(const float ro[3], const float norm[3], const Material& mat, const float Xi[2], float L[3]) const noexcept
+		RadeonRays::float3
+		PointLight::sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
 			auto transform = this->getTransform();
 			auto x = transform[3 * 4 + 0];
 			auto y = transform[3 * 4 + 1];
 			auto z = transform[3 * 4 + 2];
 
-			L[0] = ro[0] - x;
-			L[1] = ro[1] - y;
-			L[2] = ro[2] - z;
+			return RadeonRays::float3(P[0] - x, P[1] - y, P[2] - z);
 		}
 	}
 }
