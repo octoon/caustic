@@ -569,7 +569,7 @@ namespace octoon
 		}
 
 		void
-		MonteCarlo::render(std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept
+		MonteCarlo::render(const Scene& scene, std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept
 		{
 			this->Estimate(frame, RadeonRays::int2(x, y), RadeonRays::int2(w, h));
 		}

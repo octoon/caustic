@@ -49,7 +49,7 @@ namespace octoon
 
 			const std::uint32_t* data() const noexcept;
 
-			void render(std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept;
+			void render(const Scene& scene, std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept;
 
 		private:
 			bool init_data();
