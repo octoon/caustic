@@ -269,6 +269,7 @@ namespace octoon
 			RadeonRays::Event* e = nullptr;
 			api_->MapBuffer(renderData_.fr_rays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
+			float aspect = (float)width_ / height_;
 			float xstep = 2.0f / (float)this->width_;
 			float ystep = 2.0f / (float)this->height_;
 
@@ -283,9 +284,8 @@ namespace octoon
 				float z = 1.0f;
 
 				auto& ray = rays[i];
-				camera.getTranslate(&ray.o.x);
-				ray.d = RadeonRays::float3(x * width_ / height_, y, z - ray.o.z);
-				ray.d.normalize();
+				ray.o = camera.getTranslate();
+				ray.d = RadeonRays::normalize(RadeonRays::float3(x * aspect, y, z - ray.o.z));
 				ray.SetMaxT(std::numeric_limits<float>::max());
 				ray.SetTime(0.0f);
 				ray.SetMask(-1);

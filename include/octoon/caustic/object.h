@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <assert.h>
+#include <radeon_rays.h>
 
 namespace octoon
 {
@@ -18,7 +19,7 @@ namespace octoon
 			const float* getTransform() const noexcept;
 			const float* getTransformInverse() const noexcept;
 
-			void getTranslate(float translate[3]) const noexcept;
+			RadeonRays::float3 getTranslate() const noexcept;
 
 			template<typename T>
 			bool isA()
