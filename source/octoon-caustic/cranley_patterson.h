@@ -8,24 +8,27 @@
 
 namespace octoon
 {
-	class CranleyPatterson final : public Sequences
+	namespace caustic
 	{
-	public:
-		CranleyPatterson() noexcept;
-		CranleyPatterson(std::unique_ptr<Sequences>&& seq) noexcept;
-		~CranleyPatterson() noexcept;
+		class CranleyPatterson final : public Sequences
+		{
+		public:
+			CranleyPatterson() noexcept;
+			CranleyPatterson(std::unique_ptr<Sequences>&& seq) noexcept;
+			~CranleyPatterson() noexcept;
 
-		void setSequences(std::unique_ptr<Sequences>&& seq) noexcept;
+			void setSequences(std::unique_ptr<Sequences>&& seq) noexcept;
 
-		void init_random(std::uint32_t size) noexcept;
+			void init_random(std::uint32_t size) noexcept;
 
-		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept override;
-		float sample(std::uint32_t dimension, std::uint32_t frame, std::uint32_t index) const noexcept;
+			float sample(std::uint32_t dimension, std::uint32_t index) const noexcept override;
+			float sample(std::uint32_t dimension, std::uint32_t frame, std::uint32_t index) const noexcept;
 
-	private:
-		std::vector<float> random_;
-		std::unique_ptr<Sequences> sequences_;
-	};
+		private:
+			std::vector<float> random_;
+			std::unique_ptr<Sequences> sequences_;
+		};
+	}
 }
 
 #endif

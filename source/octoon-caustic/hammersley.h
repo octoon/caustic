@@ -5,19 +5,22 @@
 
 namespace octoon
 {
-	class Hammersley final : public Sequences
+	namespace caustic
 	{
-	public:
-		Hammersley() noexcept;
-		Hammersley(std::uint32_t maxSamples) noexcept;
-		~Hammersley() noexcept;
+		class Hammersley final : public Sequences
+		{
+		public:
+			Hammersley() noexcept;
+			Hammersley(std::uint32_t maxSamples) noexcept;
+			~Hammersley() noexcept;
 
-		float sample(std::uint32_t dimension, std::uint32_t index) const noexcept override;
-		float sample(std::uint32_t dimension, std::uint32_t index, std::uint32_t seed) const noexcept;
+			float sample(std::uint32_t dimension, std::uint32_t index) const noexcept override;
+			float sample(std::uint32_t dimension, std::uint32_t index, std::uint32_t seed) const noexcept;
 
-	private:
-		std::uint32_t maxSamples_;
-	};
+		private:
+			std::uint32_t maxSamples_;
+		};
+	}
 }
 
 #endif

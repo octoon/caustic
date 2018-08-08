@@ -5,18 +5,21 @@
 
 namespace octoon
 {
-	class Sequences
+	namespace caustic
 	{
-	public:
-		Sequences() noexcept;
-		virtual ~Sequences() noexcept;
+		class Sequences
+		{
+		public:
+			Sequences() noexcept;
+			virtual ~Sequences() noexcept;
 
-		virtual float sample(std::uint32_t dimension, std::uint32_t index) const noexcept = 0;
+			virtual float sample(std::uint32_t dimension, std::uint32_t index) const noexcept = 0;
 
-	private:
-		Sequences(const Sequences&) = delete;
-		Sequences& operator=(const Sequences&) = delete;
-	};
+		private:
+			Sequences(const Sequences&) = delete;
+			Sequences& operator=(const Sequences&) = delete;
+		};
+	}
 }
 
 #endif

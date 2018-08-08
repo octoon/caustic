@@ -81,7 +81,7 @@ namespace octoon
 
 		bxdf_ = std::make_unique<caustic::BSDF>();
 		tonemapping_ = std::make_unique<caustic::ACES>();
-		randomSampler_ = std::make_unique<CranleyPatterson>(std::make_unique<Halton>());
+		randomSampler_ = std::make_unique<caustic::CranleyPatterson>(std::make_unique<caustic::Halton>());
 		randomSampler_->init_random(width_ * height_);
 
 		if (!init_data()) throw std::runtime_error("init_data() fail");

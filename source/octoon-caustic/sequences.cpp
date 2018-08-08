@@ -2,11 +2,14 @@
 
 namespace octoon
 {
-	Sequences::Sequences() noexcept
+	namespace caustic
 	{
-	}
+		Sequences::Sequences() noexcept
+		{
+		}
 
-	Sequences::~Sequences() noexcept
-	{
+		Sequences::~Sequences() noexcept
+		{
+		}
 	}
 }
