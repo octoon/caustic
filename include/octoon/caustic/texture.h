@@ -38,8 +38,8 @@ namespace octoon
 			virtual std::uint8_t maxLevel() const noexcept { return 1; }
 
 			// Layer
-			virtual std::uint8_t minLayer() const noexcept { return 0; }
-			virtual std::uint8_t maxLayer() const noexcept { return 0; }
+			virtual std::uint32_t minLayer() const noexcept { return 0; }
+			virtual std::uint32_t maxLayer() const noexcept { return 0; }
 		};
 
         template <typename T>
@@ -81,8 +81,8 @@ namespace octoon
 			}
 			virtual ~Texture2D() = default;
 
-            std::uint32_t width() const override { return width_; }
-            std::uint32_t height() const override { return height_; }
+            std::uint32_t width() const noexcept override { return width_; }
+            std::uint32_t height() const noexcept override { return height_; }
 
             T fetch(std::uint32_t x, std::uint32_t lod) const noexcept override
             {
@@ -112,11 +112,11 @@ namespace octoon
 		public:
 			Texture2DArray(std::uint32_t w, std::uint32_t h, std::uint32_t layer, const T *data);
 
-			std::uint32_t width() const override { return width_; }
-			std::uint32_t height() const override { return height_; }
-			std::uint32_t maxLayer() const override { return layer_; }
+			std::uint32_t width() const noexcept override { return width_; }
+			std::uint32_t height() const noexcept override { return height_; }
+			std::uint32_t maxLayer() const noexcept override { return layer_; }
 
-			T fetch(std::uint32_t x, std::uint32_t y, std::uint32_t z, std::uint32_t lod) const noexcept override
+			T fetch(std::uint32_t x, std::uint32_t y, std::uint32_t z, std::uint32_t lod) const noexcept
 			{
 				return data_[z][x * width_ + y];
 			};
@@ -132,16 +132,16 @@ namespace octoon
         class Texture3D final : Texture<T>
         {
         public:
-            Texture3D(std::uint32_t w, std::uint32_t h, std::uint32_t depth, const T *data);
+            Texture3D(std::uint32_t w, std::uint32_t h, std::uint32_t depth, const T* data);
 
-            std::uint32_t width() const override { return width_; }
-            std::uint32_t height() const override { return height_; }
-            std::uint32_t length() const override { return depth_; }
+            std::uint32_t width() const noexcept override { return width_; }
+            std::uint32_t height() const noexcept override { return height_; }
+            std::uint32_t depth() const noexcept override { return depth_; }
 
-            T fetch(std::uint32_t x, std::uint32_t y, std::uint32_t z, std::uint32_t lod) const noexcept override
-            {
-            	return data_[z * depth_ * width_ + x * width_ + y];
-            };
+			virtual T fetch(std::uint32_t x, std::uint32_t y, std::uint32_t z, std::uint32_t lod) const noexcept
+			{
+				return data_[z * depth_ * width_ + x * width_ + y];
+			};
 
         private:
             std::uint32_t width_;
