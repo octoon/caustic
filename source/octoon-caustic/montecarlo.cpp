@@ -383,7 +383,7 @@ namespace octoon
 						RadeonRays::float3 L = light.sample(ro, norm, mat, renderData_.random[i].x);
 						assert(std::isfinite(L[0] + L[1] + L[2]));
 
-						if (L[0] + L[1] + L[2])
+						if (RadeonRays::dot(L, L) > 0.0f)
 						{
 							auto& ray = rays[i];
 							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
