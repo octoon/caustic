@@ -103,7 +103,7 @@ namespace octoon
 		{
 			RadeonRays::IntersectionApi::SetPlatform(RadeonRays::DeviceInfo::kAny);
 
-			int deviceidx = -1;
+			auto deviceidx = std::string::npos;
 			for (auto i = 0U; i < RadeonRays::IntersectionApi::GetDeviceCount(); ++i)
 			{
 				RadeonRays::DeviceInfo devinfo;
@@ -119,7 +119,7 @@ namespace octoon
 				}
 			}
 
-			if (deviceidx == -1)
+			if (deviceidx == std::string::npos)
 			{
 				for (auto i = 0U; i < RadeonRays::IntersectionApi::GetDeviceCount(); ++i)
 				{
@@ -134,7 +134,7 @@ namespace octoon
 				}
 			}
 
-			if (deviceidx == -1) return false;
+			if (deviceidx == std::string::npos) return false;
 
 			this->api_ = RadeonRays::IntersectionApi::Create(deviceidx);
 

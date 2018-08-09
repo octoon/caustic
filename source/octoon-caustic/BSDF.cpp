@@ -87,8 +87,8 @@ namespace octoon
 			float sinTheta = fast_sqrt(1 - cosTheta * cosTheta);
 
 			RadeonRays::float3 H;
-			H.x = sinTheta * cos(phi);
-			H.y = sinTheta * sin(phi);
+			H.x = sinTheta * fast_cos(phi);
+			H.y = sinTheta * fast_sin(phi);
 			H.z = cosTheta;
 
 			return H;
