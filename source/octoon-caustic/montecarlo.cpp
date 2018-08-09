@@ -325,20 +325,20 @@ namespace octoon
 						auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 						auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-						if (RadeonRays::dot(renderData_.rays[i].d, norm) > 0.0f)
-							norm = -norm;
-
 						RadeonRays::float3 L = bxdf_->sample(norm, -renderData_.rays[i].d, mat, renderData_.random[i]);
 						if (mat.ior <= 1.0f)
 						{
-							if (RadeonRays::dot(norm, L) < 0.0f)
+							if (RadeonRays::dot(norm, L) < 0.0f || RadeonRays::dot(renderData_.rays[i].d, norm) > 0.0f)
 							{
 								std::memset(&renderData_.rays[i], 0, sizeof(RadeonRays::ray));
 								continue;
 							}
 						}
-
-						assert(std::isfinite(L.x + L.y + L.z));
+						else
+						{
+							if (RadeonRays::dot(renderData_.rays[i].d, norm) > 0.0f)
+								norm = -norm;
+						}
 
 						renderData_.weights[i] = bxdf_->sample_weight(norm, -renderData_.rays[i].d, L, mat, renderData_.random[i]);
 
