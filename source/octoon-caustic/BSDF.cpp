@@ -187,7 +187,7 @@ namespace octoon
 
 		RadeonRays::float3 CosineDirection(const RadeonRays::float3& n, const RadeonRays::float2& Xi)
 		{
-			auto H = CosineSampleHemisphere(Xi);
+			auto H = UniformSampleHemisphere(Xi);
 			return TangentToWorld(H, n);
 		}
 
