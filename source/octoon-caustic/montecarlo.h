@@ -25,7 +25,7 @@ namespace octoon
 		{
 			std::int32_t numEstimate;
 
-			std::vector<RadeonRays::ray> rays;
+			std::vector<RadeonRays::ray> rays[2];
 			std::vector<RadeonRays::Intersection> hits;
 			std::vector<RadeonRays::Intersection> shadowHits;
 			std::vector<RadeonRays::float3> samples;
@@ -63,7 +63,7 @@ namespace octoon
 			void GenerateWorkspace(std::int32_t numEstimate);
 
 			void GenerateNoise(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
-			void GenerateRays() noexcept;
+			void GenerateRays(std::uint32_t pass) noexcept;
 			void GenerateCamera(const Camera& camera, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 			void GenerateLightRays(const Light& light) noexcept;
 
@@ -71,7 +71,7 @@ namespace octoon
 			void GatherSampling(std::int32_t pass) noexcept;
 			void GatherHits() noexcept;
 			void GatherShadowHits() noexcept;
-			void GatherLightSamples(const Light& light) noexcept;
+			void GatherLightSamples(std::uint32_t pass, const Light& light) noexcept;
 
 			void AccumSampling(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 			void AdaptiveSampling() noexcept;
