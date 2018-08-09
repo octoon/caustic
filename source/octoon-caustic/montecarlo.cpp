@@ -307,7 +307,7 @@ namespace octoon
 
 			std::memset(renderData_.weights.data(), 0, sizeof(RadeonRays::float3) * this->renderData_.numEstimate);
 
-	//#pragma omp parallel for
+	#pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 			{
 				auto& hit = renderData_.hits[i];
@@ -325,7 +325,10 @@ namespace octoon
 						auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 						auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-						RadeonRays::float3 L = bxdf_->sample(renderData_.rays[i].d, norm, mat, renderData_.random[i]);
+						if (RadeonRays::dot(renderData_.rays[i].d, norm) > 0.0f)
+							norm = -norm;
+
+						RadeonRays::float3 L = bxdf_->sample(norm, -renderData_.rays[i].d, mat, renderData_.random[i]);
 						if (mat.ior <= 1.0f)
 						{
 							if (RadeonRays::dot(norm, L) < 0.0f)
@@ -337,7 +340,7 @@ namespace octoon
 
 						assert(std::isfinite(L.x + L.y + L.z));
 
-						renderData_.weights[i] = bxdf_->sample_weight(renderData_.rays[i].d, norm, L, mat, renderData_.random[i]);
+						renderData_.weights[i] = bxdf_->sample_weight(norm, -renderData_.rays[i].d, L, mat, renderData_.random[i]);
 
 						auto& ray = renderData_.rays[i];
 						ray.d = L;

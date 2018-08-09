@@ -148,7 +148,7 @@ namespace octoon
 
 		RadeonRays::float3 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
 		{
-			float nl = std::abs(RadeonRays::dot(L, N));
+			float nl = saturate(RadeonRays::dot(L, N));
 			if (nl > 0)
 			{
 				auto H = RadeonRays::normalize(L + V);
@@ -200,24 +200,19 @@ namespace octoon
 		}
 
 		RadeonRays::float3
-		BSDF::sample(const RadeonRays::float3& V, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		BSDF::sample(const RadeonRays::float3& N, const RadeonRays::float3& V, const Material& mat, const RadeonRays::float2& Xi) noexcept
 		{
-			RadeonRays::float3 n = N;
-
-			if (RadeonRays::dot(N, V) > 0.0f)
-				n = -n;
-
 			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
-				return reflect(V, LobeDirection(n, mat.roughness, Xi));
+				return reflect(-V, LobeDirection(N, mat.roughness, Xi));
 
 			if (mat.ior > 1.0f)
-				return refract(V, LobeDirection(n, mat.roughness, Xi), 1.0f / mat.ior);
+				return refract(-V, LobeDirection(N, mat.roughness, Xi), 1.0f / mat.ior);
 
-			return CosineDirection(n, Xi);
+			return CosineDirection(N, Xi);
 		}
 
 		RadeonRays::float3
-		BSDF::sample_weight(const RadeonRays::float3& V, const RadeonRays::float3& N, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		BSDF::sample_weight(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) noexcept
 		{
 			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
 			{
@@ -226,7 +221,7 @@ namespace octoon
 				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-				return SpecularBRDF_GGX(N, L, N, f0, mat.roughness);
+				return SpecularBRDF_GGX(N, L, V, f0, mat.roughness);
 			}
 
 			if (mat.ior > 1.0f)
@@ -236,10 +231,10 @@ namespace octoon
 				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-				return SpecularBTDF_GGX(N, L, N, f0, mat.roughness) * mat.albedo;
+				return SpecularBTDF_GGX(N, L, V, f0, mat.roughness) * mat.albedo;
 			}
 
-			return DiffuseBRDF(N, L, -V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
+			return DiffuseBRDF(N, L, V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
 		}
 	}
 }
