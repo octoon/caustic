@@ -176,7 +176,7 @@ namespace octoon
 		{
 			RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0, 0, 1) : RadeonRays::float3(1, 0, 0);
 			RadeonRays::float3 X = RadeonRays::normalize(RadeonRays::cross(Y, N));
-			return RadeonRays::normalize(X * H.x + cross(N, X) * H.y + N * H.z);
+			return RadeonRays::normalize(X * H.x + RadeonRays::cross(N, X) * H.y + N * H.z);
 		}
 
 		RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, const RadeonRays::float2& Xi)
@@ -208,10 +208,10 @@ namespace octoon
 				n = -n;
 
 			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
-				return LobeDirection(RadeonRays::normalize(reflect(V, n)), mat.roughness, Xi);
+				return reflect(V, LobeDirection(n, mat.roughness, Xi));
 
 			if (mat.ior > 1.0f)
-				return RadeonRays::normalize(refract(V, n, 1.0f / mat.ior));
+				return refract(V, LobeDirection(n, mat.roughness, Xi), 1.0f / mat.ior);
 
 			return CosineDirection(n, Xi);
 		}

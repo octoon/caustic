@@ -153,13 +153,13 @@ namespace octoon
 			for (auto& it : material)
 			{
 				caustic::Material m;
-				m.albedo.x = std::pow(it.diffuse[0], 2.2f) * it.illum;
-				m.albedo.y = std::pow(it.diffuse[1], 2.2f) * it.illum;
-				m.albedo.z = std::pow(it.diffuse[2], 2.2f) * it.illum;
+				m.albedo.x = std::pow(it.diffuse[0], 2.2f);
+				m.albedo.y = std::pow(it.diffuse[1], 2.2f);
+				m.albedo.z = std::pow(it.diffuse[2], 2.2f);
 
-				m.specular.x = std::pow(it.specular[0], 2.2f) * it.illum * 0.04f;
-				m.specular.y = std::pow(it.specular[1], 2.2f) * it.illum * 0.04f;
-				m.specular.z = std::pow(it.specular[2], 2.2f) * it.illum * 0.04f;
+				m.specular.x = std::pow(it.specular[0], 2.2f) * 0.04f;
+				m.specular.y = std::pow(it.specular[1], 2.2f) * 0.04f;
+				m.specular.z = std::pow(it.specular[2], 2.2f) * 0.04f;
 
 				m.emissive.x /= (4 * PI / it.illum);
 				m.emissive.y /= (4 * PI / it.illum);
@@ -307,7 +307,7 @@ namespace octoon
 
 			std::memset(renderData_.weights.data(), 0, sizeof(RadeonRays::float3) * this->renderData_.numEstimate);
 
-	#pragma omp parallel for
+	//#pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 			{
 				auto& hit = renderData_.hits[i];
@@ -329,7 +329,10 @@ namespace octoon
 						if (mat.ior <= 1.0f)
 						{
 							if (RadeonRays::dot(norm, L) < 0.0f)
-								L = -L;
+							{
+								std::memset(&renderData_.rays[i], 0, sizeof(RadeonRays::ray));
+								continue;
+							}
 						}
 
 						assert(std::isfinite(L.x + L.y + L.z));
