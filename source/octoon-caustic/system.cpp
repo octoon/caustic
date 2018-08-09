@@ -40,7 +40,7 @@ namespace octoon
 			tileWidth_ = (width_ + tileSize_ - 1) / tileSize_;
 			tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
 
-			float color[3] = { 2.0f, 2.0f, 2.0f };
+			float color[3] = { 4.0f, 4.0f, 4.0f };
 			float transform[4][4] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0.f, 1.f, 3.f,1 };
 
 			auto camera = std::make_shared<FilmCamera>();
