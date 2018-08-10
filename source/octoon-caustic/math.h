@@ -34,7 +34,7 @@ namespace octoon
 
 	inline RadeonRays::float3 reflect(const RadeonRays::float3& L, const RadeonRays::float3& N) noexcept
 	{
-		return L - 2 * (RadeonRays::dot(L, N) * N);
+		return L + 2 * (std::abs(RadeonRays::dot(L, N)) * N);
 	}
 
 	inline RadeonRays::float3 refract(const RadeonRays::float3& L, const RadeonRays::float3& N, float ior)
@@ -46,7 +46,6 @@ namespace octoon
 		assert(cost2 > 0.0f);
 		return (L - N * dt) * ior - N * std::sqrt(cost2);
 	}
-
 
 	inline float fast_sin(float x)
 	{

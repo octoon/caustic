@@ -196,7 +196,7 @@ namespace octoon
 			return TangentToWorld(H, n);
 		}
 
-		RadeonRays::float3 Disney_Evaluate(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& sample) noexcept
+		RadeonRays::float3 Disney_Evaluate(const RadeonRays::float3& N, const RadeonRays::float3& wi, const RadeonRays::float3& wo, const Material& mat, const RadeonRays::float2& sample) noexcept
 		{
 			if (mat.ior > 1.0f)
 			{
@@ -205,7 +205,7 @@ namespace octoon
 				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-				return SpecularBTDF_GGX(N, -L, N, f0, mat.roughness) * mat.albedo;
+				return SpecularBTDF_GGX(N, -wo, N, f0, mat.roughness) * mat.albedo;
 			}
 			else
 			{
@@ -223,28 +223,28 @@ namespace octoon
 					f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 					f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-					return SpecularBRDF_GGX(N, L, V, f0, mat.roughness);
+					return SpecularBRDF_GGX(N, wo, wi, f0, mat.roughness);
 				}
 				else
 				{
 					E.y -= cs_w;
 					E.y /= (1.0f - cs_w);
 
-					return DiffuseBRDF(N, L, V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
+					return DiffuseBRDF(N, wo, wi, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
 				}
 			}
 		}
 
-		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& V, const Material& mat, const RadeonRays::float2& sample) noexcept
+		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& wi, const Material& mat, const RadeonRays::float2& sample) noexcept
 		{
 			if (mat.ior > 1.0f)
 			{
-				return refract(-V, LobeDirection(N, mat.roughness, sample), 1.0f / mat.ior);
+				return refract(-wi, LobeDirection(N, mat.roughness, sample), 1.0f / mat.ior);
 			}
 			else
 			{
-				float cd_lum = RadeonRays::dot(mat.albedo, RadeonRays::float3(0.3f, 0.6f, 0.1f));
-				float cs_lum = RadeonRays::dot(mat.specular, RadeonRays::float3(0.3f, 0.6f, 0.1f));
+				float cd_lum = luminance(mat.albedo);
+				float cs_lum = luminance(mat.specular);
 				float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
 				auto E = sample;
@@ -252,7 +252,7 @@ namespace octoon
 				{
 					E.y /= cs_w;
 
-					return reflect(-V, LobeDirection(N, mat.roughness, E));
+					return reflect(-wi, LobeDirection(N, mat.roughness, E));
 				}
 				else
 				{
