@@ -11,7 +11,6 @@
 #include "tiny_obj_loader.h"
 
 #include <octoon/caustic/pipeline.h>
-#include <octoon/caustic/BxDF.h>
 #include <octoon/caustic/tonemapping.h>
 #include <octoon/caustic/material.h>
 #include <octoon/caustic/light.h>
@@ -94,7 +93,6 @@ namespace octoon
 
 			RenderData renderData_;
 
-			std::unique_ptr<BxDF> bxdf_;
 			std::unique_ptr<Tonemapping> tonemapping_;
 			std::unique_ptr<class CranleyPatterson> sequences_;
 

@@ -1,4 +1,4 @@
-#include "BSDF.h"
+#include "disney.h"
 #include "math.h"
 #include <assert.h>
 
@@ -191,16 +191,7 @@ namespace octoon
 			return TangentToWorld(H, n);
 		}
 
-		BSDF::BSDF() noexcept
-		{
-		}
-
-		BSDF::~BSDF() noexcept
-		{
-		}
-
-		RadeonRays::float3
-		BSDF::sample(const RadeonRays::float3& N, const RadeonRays::float3& V, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& V, const Material& mat, const RadeonRays::float2& Xi) noexcept
 		{
 			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
 				return reflect(-V, LobeDirection(N, mat.roughness, Xi));
@@ -211,8 +202,7 @@ namespace octoon
 			return CosineDirection(N, Xi);
 		}
 
-		RadeonRays::float3
-		BSDF::sample_weight(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		RadeonRays::float3 Disney_Evaluate(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) noexcept
 		{
 			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
 			{

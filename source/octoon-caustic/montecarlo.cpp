@@ -8,7 +8,7 @@
 
 #include <octoon/caustic/ACES.h>
 
-#include "BSDF.h"
+#include "disney.h"
 #include "halton.h"
 #include "cranley_patterson.h"
 
@@ -27,12 +27,22 @@ namespace octoon
 			return attenuation;
 		}
 
-		RadeonRays::float3 ConvertFromBarycentric(const float* vec, const int* ind, int prim_id, const RadeonRays::float4& uvwt)
+		RadeonRays::float3 InterpolateVertices(const float* vec, const int* indices, int prim_id, const RadeonRays::float4& barycentrics)
 		{
-			RadeonRays::float3 a = { vec[ind[prim_id * 3] * 3], vec[ind[prim_id * 3] * 3 + 1], vec[ind[prim_id * 3] * 3 + 2], };
-			RadeonRays::float3 b = { vec[ind[prim_id * 3 + 1] * 3], vec[ind[prim_id * 3 + 1] * 3 + 1], vec[ind[prim_id * 3 + 1] * 3 + 2], };
-			RadeonRays::float3 c = { vec[ind[prim_id * 3 + 2] * 3], vec[ind[prim_id * 3 + 2] * 3 + 1], vec[ind[prim_id * 3 + 2] * 3 + 2], };
-			return a * (1 - uvwt.x - uvwt.y) + b * uvwt.x + c * uvwt.y;
+			auto i0 = indices[prim_id * 3];
+			auto i1 = indices[prim_id * 3 + 1];
+			auto i2 = indices[prim_id * 3 + 2];
+
+			RadeonRays::float3 a = { vec[i0 * 3], vec[i0 * 3 + 1], vec[i0 * 3 + 2], };
+			RadeonRays::float3 b = { vec[i1 * 3], vec[i1 * 3 + 1], vec[i1 * 3 + 2], };
+			RadeonRays::float3 c = { vec[i2 * 3], vec[i2 * 3 + 1], vec[i2 * 3 + 2], };
+
+			return a * (1 - barycentrics.x - barycentrics.y) + b * barycentrics.x + c * barycentrics.y;
+		}
+
+		RadeonRays::float3 InterpolateNormals(const float* vec, const int* indices, int prim_id, const RadeonRays::float4& barycentrics)
+		{
+			return RadeonRays::normalize(InterpolateVertices(vec, indices, prim_id, barycentrics));
 		}
 
 		MonteCarlo::MonteCarlo() noexcept
@@ -78,7 +88,6 @@ namespace octoon
 			width_ = w;
 			height_ = h;
 
-			bxdf_ = std::make_unique<caustic::BSDF>();
 			tonemapping_ = std::make_unique<caustic::ACES>();
 			sequences_ = std::make_unique<caustic::CranleyPatterson>(std::make_unique<caustic::Halton>(), width_ * height_);
 
@@ -327,8 +336,8 @@ namespace octoon
 
 					if (mat.emissive.x == 0.0f || mat.emissive[1] == 0.0f || mat.emissive[2] == 0.0f)
 					{
-						auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-						auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+						auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+						auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
 						if (mat.ior > 1.0f)
 						{
@@ -336,14 +345,14 @@ namespace octoon
 								norm = -norm;
 						}
 
-						RadeonRays::float3 L = bxdf_->sample(norm, -view.d, mat, renderData_.random[i]);
+						RadeonRays::float3 L = Disney_Sample(norm, -view.d, mat, renderData_.random[i]);
 						if (mat.ior <= 1.0f)
 						{
 							if (RadeonRays::dot(norm, L) < 0.0f || RadeonRays::dot(view.d, norm) > 0.0f)
 								continue;
 						}
 
-						renderData_.weights[i] = bxdf_->sample_weight(norm, -view.d, L, mat, renderData_.random[i]);
+						renderData_.weights[i] = Disney_Evaluate(norm, -view.d, L, mat, renderData_.random[i]);
 
 						ray.d = L;
 						ray.o = ro + L * 1e-5f;
@@ -381,8 +390,8 @@ namespace octoon
 
 					if (mat.emissive.x == 0.0f && mat.emissive[1] == 0.0f && mat.emissive[2] == 0.0f)
 					{
-						auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-						auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+						auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+						auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
 						RadeonRays::float4 L = light.sample(ro, norm, mat, renderData_.random[i].x);
 						assert(std::isfinite(L[0] + L[1] + L[2]));
@@ -484,7 +493,7 @@ namespace octoon
 					auto& mesh = scene_[hit.shapeid].mesh;
 					auto& mat = materials_[mesh.material_ids[hit.primid]];
 
-					float atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
+					float atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
 					if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
 					{
 						sample.x *= mat.emissive[0] * atten;
