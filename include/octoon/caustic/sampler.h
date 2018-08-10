@@ -42,7 +42,30 @@ namespace octoon
         public:
             virtual T sample(const Texture1D<T>& texels, float u, float lod) noexcept
             {
-            	throw std::runtime_error("Not implemented yet.");
+				switch (this->getWrapMode())
+				{
+				case Wrap::Repeat:
+				{
+					auto x = u - std::floor(u);
+					return texels.fetch((int)std::round(x * texels.width()));
+				}
+				break;
+				case Wrap::Mirror:
+				{
+					auto iu = ((std::uint32_t)std::floor(u));
+					auto x = (iu % 2) > 0 ? 1.0f - (u - iu) : (u - iu);
+					return texels.fetch((int)std::round(x * texels.width()));
+				}
+				break;
+				case Wrap::ClampToEdge:
+				{
+					auto x = clamp(u, 0.f, 1.f);
+					return texels.fetch((int)std::round(x * texels.width()));
+				}
+				break;
+				}
+
+                return n;
             }
 
             virtual T sample(const Texture2D<T>& texels, float u, float v, float lod) noexcept
@@ -114,6 +137,55 @@ namespace octoon
 				}
 				break;
 				}
+            }
+        };
+
+		template<class T>
+        class BilinearInterpolation : public Interpolation<T>
+        {
+        public:
+            virtual T sample(const Texture1D<T>& texels, float u, float lod) noexcept
+            {
+				throw std::runtime_error("Not implemented yet.");
+            }
+
+            virtual T sample(const Texture2D<T>& texels, float u, float v, float lod) noexcept
+            {
+				T x = clamp(u, 0.f, 1.f) * this->width;
+				T y = clamp(v, 0.f, 1.f) * this->height;
+				T x2 = x >= this->width - 1 ? this->width - 1 : x + 1;
+				T y2 = y >= this->height - 1 ? this->height - 1 : y + 1;
+
+				T xw = frac(x);
+				T yw = frac(y);
+
+				// bilinear interpolation
+				T xw1 = 1.0f - xw;
+				T xw2 = xw;
+				T yw1 = 1.0f - yw;
+				T yw2 = yw;
+
+				auto v1 = texels.fetch(x, y);
+				auto v2 = texels.fetch(x2, y);
+				auto v3 = texels.fetch(x, y2);
+				auto v4 = texels.fetch(x2, y2);
+
+				v1 = v1 * xw1 * yw1;
+				v2 = v2 * xw2 * yw1;
+				v3 = v3 * xw1 * yw2;
+				v4 = v4 * xw2 * yw2;
+
+				return v1 + v2 + v3 + v4;
+            }
+
+            virtual T sample(const Texture2DArray<T>& texels, float u, float v, float layer, float lod) noexcept
+            {
+            	throw std::runtime_error("Not implemented yet.");
+            }
+
+            virtual T sample(const Texture3D<T>& texels, float u, float v, float w, float lod) noexcept
+            {
+				throw std::runtime_error("Not implemented yet.");
             }
         };
 
