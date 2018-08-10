@@ -9,7 +9,8 @@ namespace octoon
 	{
 		System::System() noexcept
 			: isQuitRequest_(false)
-			, tileSize_(512)
+			, tileWidth_(512)
+			, tileHeight_(512)
 		{
 		}
 
@@ -19,11 +20,12 @@ namespace octoon
 			this->setup(w, h);
 		}
 
-		System::System(std::uint32_t w, std::uint32_t h, std::uint32_t tileSize) noexcept
+		System::System(std::uint32_t w, std::uint32_t h, std::uint32_t tileWidth, std::uint32_t tileHeight) noexcept
 			: System()
 		{
 			this->setup(w, h);
-			this->setTileSize(tileSize);
+			this->setTileWidth(tileWidth);
+			this->setTileHeight(tileHeight);
 		}
 
 		System::~System()
@@ -37,8 +39,6 @@ namespace octoon
 		{
 			width_ = w;
 			height_ = h;
-			tileWidth_ = (width_ + tileSize_ - 1) / tileSize_;
-			tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
 
 			float color[3] = { 4.0f, 4.0f, 4.0f };
 			float transform[4][4] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0.f, 1.f, 3.f,1 };
@@ -54,31 +54,44 @@ namespace octoon
 		}
 
 		void
-		System::setTileSize(std::uint32_t size) noexcept
+		System::setTileWidth(std::uint32_t size) noexcept
 		{
-			tileSize_ = size;
-			tileWidth_ = (width_ + tileSize_ - 1) / tileSize_;
-			tileHeight_ = (height_ + tileSize_ - 1) / tileSize_;
+			tileWidth_ = size;
+		}
+
+		void
+		System::setTileHeight(std::uint32_t size) noexcept
+		{
+			tileHeight_ = size;
 		}
 
 		std::uint32_t
-		System::getTileSize() const noexcept
+		System::getTileWidth() const noexcept
 		{
-			return tileSize_;
+			return tileWidth_;
+		}
+
+		std::uint32_t
+		System::getTileHeight() const noexcept
+		{
+			return tileHeight_;
 		}
 
 		std::future<std::uint32_t>
 		System::renderTile(std::uint32_t frame, std::uint32_t tile) noexcept
 		{
-			auto x = tile % tileWidth_ * tileSize_;
-			auto y = tile / tileWidth_ * tileSize_;
+			auto tileWidth = (width_ + tileWidth_ - 1) / tileWidth_;
+			auto tileHeight = (height_ + tileHeight_ - 1) / tileHeight_;
+
+			auto x = tile % tileWidth * tileWidth_;
+			auto y = tile / tileWidth * tileHeight_;
 
 			std::packaged_task<std::uint32_t()> task([=]()
 			{
 				pipeline_->render(*scene_, frame,
 					x, y,
-					std::min(tileSize_, static_cast<std::int32_t>(width_ - x)),
-					std::min(tileSize_, static_cast<std::int32_t>(height_ - y)));
+					std::min(tileWidth_, static_cast<std::int32_t>(width_ - x)),
+					std::min(tileHeight_, static_cast<std::int32_t>(height_ - y)));
 
 				return tile;
 			});
@@ -117,7 +130,10 @@ namespace octoon
 		void
 		System::render(std::uint32_t frame) noexcept
 		{
-			for (std::int32_t i = 0; i < tileWidth_ * tileHeight_; i++)
+			auto w = (width_ + tileWidth_ - 1) / tileWidth_;
+			auto h = (height_ + tileHeight_ - 1) / tileHeight_;
+
+			for (std::int32_t i = 0; i < w * h; i++)
 				queues_.push_back(this->renderTile(frame, i));
 		}
 

@@ -16,13 +16,16 @@ namespace octoon
 		public:
 			System() noexcept;
 			System(std::uint32_t w, std::uint32_t h) noexcept;
-			System(std::uint32_t w, std::uint32_t h, std::uint32_t tileSize) noexcept;
+			System(std::uint32_t w, std::uint32_t h, std::uint32_t tileWidth, std::uint32_t tileHeight) noexcept;
 			~System() noexcept;
 
 			void setup(std::uint32_t w, std::uint32_t h) noexcept(false);
 
-			void setTileSize(std::uint32_t size) noexcept;
-			std::uint32_t getTileSize() const noexcept;
+			void setTileWidth(std::uint32_t w) noexcept;
+			void setTileHeight(std::uint32_t h) noexcept;
+
+			std::uint32_t getTileWidth() const noexcept;
+			std::uint32_t getTileHeight() const noexcept;
 
 			const std::uint32_t* data() const noexcept { return pipeline_->data(); };
 
@@ -40,7 +43,6 @@ namespace octoon
 			std::uint32_t height_;
 			std::unique_ptr<Pipeline> pipeline_;
 
-			std::int32_t tileSize_;
 			std::int32_t tileWidth_;
 			std::int32_t tileHeight_;
 
