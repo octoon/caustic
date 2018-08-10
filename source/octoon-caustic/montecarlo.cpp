@@ -368,7 +368,7 @@ namespace octoon
 			RadeonRays::Event* e = nullptr;
 			api_->MapBuffer(renderData_.fr_shadowrays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
-			std::memset(rays, 0, sizeof(RadeonRays::ray));
+			std::memset(rays, 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate);
 
 #pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
@@ -384,15 +384,15 @@ namespace octoon
 						auto ro = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 						auto norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-						RadeonRays::float3 L = light.sample(ro, norm, mat, renderData_.random[i].x);
+						RadeonRays::float4 L = light.sample(ro, norm, mat, renderData_.random[i].x);
 						assert(std::isfinite(L[0] + L[1] + L[2]));
 
-						if (RadeonRays::dot(L, L) > 0.0f)
+						if (L.w > 0.0f)
 						{
 							auto& ray = rays[i];
 							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
 							ray.o = ro + ray.d * 1e-5f;
-							ray.SetMaxT(std::numeric_limits<float>::max());
+							ray.SetMaxT(L.w);
 							ray.SetTime(0.0f);
 							ray.SetMask(-1);
 							ray.SetActive(true);
@@ -515,10 +515,9 @@ namespace octoon
 					continue;
 
 				auto& hit = renderData_.hits[i];
-				auto& sample = renderData_.samples[i];
-
 				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
 				{
+					auto& sample = renderData_.samples[i];
 					sample *= color;
 					sample *= renderData_.weights[i];
 				}
@@ -563,7 +562,7 @@ namespace octoon
 				{
 					this->GenerateLightRays(*light);
 
-					api_->QueryOcclusion(
+					api_->QueryIntersection(
 						renderData_.fr_shadowrays,
 						renderData_.numEstimate,
 						renderData_.fr_shadowhits,
