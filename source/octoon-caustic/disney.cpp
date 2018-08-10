@@ -191,29 +191,37 @@ namespace octoon
 			return TangentToWorld(H, n);
 		}
 
-		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& V, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& V, const Material& mat, const RadeonRays::float2& sample) noexcept
 		{
-			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
-				return reflect(-V, LobeDirection(N, mat.roughness, Xi));
-
 			if (mat.ior > 1.0f)
-				return refract(-V, LobeDirection(N, mat.roughness, Xi), 1.0f / mat.ior);
+			{
+				return refract(-V, LobeDirection(N, mat.roughness, sample), 1.0f / mat.ior);
+			}
+			else
+			{
+				float cd_lum = RadeonRays::dot(mat.albedo, RadeonRays::float3(0.3f, 0.6f, 0.1f));
+				float cs_lum = RadeonRays::dot(mat.specular, RadeonRays::float3(0.3f, 0.6f, 0.1f));
+				float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
-			return CosineDirection(N, Xi);
+				auto E = sample;
+				if (E.y <= cs_w)
+				{
+					E.y /= cs_w;
+
+					return reflect(-V, LobeDirection(N, mat.roughness, E));
+				}
+				else
+				{
+					E.y -= cs_w;
+					E.y /= (1.0f - cs_w);
+
+					return CosineDirection(N, E);
+				}
+			}
 		}
 
-		RadeonRays::float3 Disney_Evaluate(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) noexcept
+		RadeonRays::float3 Disney_Evaluate(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& sample) noexcept
 		{
-			if (Xi.x <= lerp(0.04f, 1.0f, mat.metalness))
-			{
-				auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
-				f0.x = lerp(f0.x, mat.albedo.x, mat.metalness);
-				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
-				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
-
-				return SpecularBRDF_GGX(N, L, V, f0, mat.roughness);
-			}
-
 			if (mat.ior > 1.0f)
 			{
 				auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
@@ -223,8 +231,32 @@ namespace octoon
 
 				return SpecularBTDF_GGX(N, -L, N, f0, mat.roughness) * mat.albedo;
 			}
+			else
+			{
+				float cd_lum = RadeonRays::dot(mat.albedo, RadeonRays::float3(0.3f, 0.6f, 0.1f));
+				float cs_lum = RadeonRays::dot(mat.specular, RadeonRays::float3(0.3f, 0.6f, 0.1f));
+				float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
-			return DiffuseBRDF(N, L, V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
+				auto E = sample;
+				if (E.y <= cs_w)
+				{
+					E.y /= cs_w;
+
+					auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+					f0.x = lerp(f0.x, mat.albedo.x, mat.metalness);
+					f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
+					f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
+
+					return SpecularBRDF_GGX(N, L, V, f0, mat.roughness);
+				}
+				else
+				{
+					E.y -= cs_w;
+					E.y /= (1.0f - cs_w);
+
+					return DiffuseBRDF(N, L, V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
+				}
+			}
 		}
 	}
 }
