@@ -80,18 +80,18 @@ namespace octoon
 		std::future<std::uint32_t>
 		System::renderTile(std::uint32_t frame, std::uint32_t tile) noexcept
 		{
-			auto tileWidth = (width_ + tileWidth_ - 1) / tileWidth_;
-			auto tileHeight = (height_ + tileHeight_ - 1) / tileHeight_;
+			auto w = (width_ + tileWidth_ - 1) / tileWidth_;
+			auto h = (height_ + tileHeight_ - 1) / tileHeight_;
 
-			auto x = tile % tileWidth * tileWidth_;
-			auto y = tile / tileWidth * tileHeight_;
+			auto x = tile % w * tileWidth_;
+			auto y = tile / w * tileHeight_;
 
 			std::packaged_task<std::uint32_t()> task([=]()
 			{
 				pipeline_->render(*scene_, frame,
 					x, y,
-					std::min(tileWidth_, static_cast<std::int32_t>(width_ - x)),
-					std::min(tileHeight_, static_cast<std::int32_t>(height_ - y)));
+					std::min<std::uint32_t>(tileWidth_, width_ - x),
+					std::min<std::uint32_t>(tileHeight_, height_ - y));
 
 				return tile;
 			});
