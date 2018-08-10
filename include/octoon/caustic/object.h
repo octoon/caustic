@@ -15,9 +15,10 @@ namespace octoon
 			Object() noexcept;
 			virtual ~Object() noexcept;
 
-			void setTransform(const float m[4][4], const float minv[4][4]) noexcept;
-			const float* getTransform() const noexcept;
-			const float* getTransformInverse() const noexcept;
+			void setTransform(const RadeonRays::matrix& m, const RadeonRays::matrix& minv) noexcept;
+
+			const RadeonRays::matrix& getTransform() const noexcept;
+			const RadeonRays::matrix& getTransformInverse() const noexcept;
 
 			RadeonRays::float3 getTranslate() const noexcept;
 
@@ -45,8 +46,8 @@ namespace octoon
 			Object& operator=(const Object&) = delete;
 
 		private:
-			float transform_[4][4];
-			float transformInverse_[4][4];
+			RadeonRays::matrix transform_;
+			RadeonRays::matrix transformInverse_;
 		};
 	}
 }

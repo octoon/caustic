@@ -1,6 +1,7 @@
 #include <octoon/caustic/system.h>
 #include <octoon/caustic/ambient_light.h>
 #include <octoon/caustic/film_camera.h>
+#include <octoon/caustic/point_light.h>
 #include "montecarlo.h"
 
 namespace octoon
@@ -40,14 +41,14 @@ namespace octoon
 			width_ = w;
 			height_ = h;
 
-			float color[3] = { 4.0f, 4.0f, 4.0f };
-			float transform[4][4] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0.f, 1.f, 3.f,1 };
+			RadeonRays::matrix transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0.f, 1.f, 3.f, 1);
 
 			auto camera = std::make_shared<FilmCamera>();
 			camera->setTransform(transform, transform);
 
 			scene_ = std::make_shared<Scene>();
-			scene_->addRenderObject(std::make_shared<AmbientLight>(color));
+			scene_->addRenderObject(std::make_shared<AmbientLight>(RadeonRays::float3(4.0f, 4.0f, 4.0f)));
+			//scene_->addRenderObject(std::make_shared<PointLight>(RadeonRays::float3(0.0f, 4.0f, 0.0f), RadeonRays::float3(4.0f, 4.0f, 4.0f)));
 			scene_->addRenderObject(std::move(camera));
 
  			thread_ = std::thread(std::bind(&System::thread, this));

@@ -11,10 +11,10 @@ namespace octoon
 		{
 		public:
 			AmbientLight() noexcept;
-			AmbientLight(const float color[3]) noexcept;
+			AmbientLight(const RadeonRays::float3& color) noexcept;
 			virtual ~AmbientLight() noexcept;
 
-			virtual RadeonRays::float3 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept override;
+			virtual RadeonRays::float4 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept override;
 
 		private:
 			AmbientLight(const AmbientLight&) noexcept = delete;

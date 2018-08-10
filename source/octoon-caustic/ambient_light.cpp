@@ -8,7 +8,7 @@ namespace octoon
 		{
 		}
 
-		AmbientLight::AmbientLight(const float color[3]) noexcept
+		AmbientLight::AmbientLight(const RadeonRays::float3& color) noexcept
 		{
 			this->setColor(color);
 		}
@@ -20,7 +20,7 @@ namespace octoon
 		RadeonRays::float3
 		AmbientLight::sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
-			return RadeonRays::float3(0, 0, 0);
+			return RadeonRays::float4(0, 0, 0, 0);
 		}
 	}
 }

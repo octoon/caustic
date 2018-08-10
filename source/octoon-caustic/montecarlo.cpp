@@ -506,8 +506,7 @@ namespace octoon
 		void
 		MonteCarlo::GatherLightSamples(std::uint32_t pass, const Light& light) noexcept
 		{
-			float color[3];
-			light.getColor(color);
+			auto& color = light.getColor();
 
 #pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
@@ -520,9 +519,7 @@ namespace octoon
 
 				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
 				{
-					sample.x *= color[0];
-					sample.y *= color[1];
-					sample.z *= color[2];
+					sample *= color;
 					sample *= renderData_.weights[i];
 				}
 			}

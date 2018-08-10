@@ -14,17 +14,17 @@ namespace octoon
 			Light() noexcept;
 			virtual ~Light() noexcept;
 
-			void setColor(const float color[3]) noexcept;
-			void getColor(float color[3]) const noexcept;
+			void setColor(const RadeonRays::float3& color) noexcept;
+			const RadeonRays::float3& getColor() const noexcept;
 
-			virtual RadeonRays::float3 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept;
+			virtual RadeonRays::float4 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept;
 
 		private:
 			Light(const Light&) noexcept = delete;
 			Light& operator=(const Light&) noexcept = delete;
 
 		private:
-			float color_[3];
+			RadeonRays::float3 color_;
 		};
 	}
 }

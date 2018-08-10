@@ -7,15 +7,6 @@ namespace octoon
 	{
 		Object::Object() noexcept
 		{
-			transform_[0][0] = 1.0f; transform_[0][1] = 0.0f; transform_[0][2] = 0.0f; transform_[0][3] = 0.0f;
-			transform_[1][0] = 0.0f; transform_[1][1] = 1.0f; transform_[1][2] = 0.0f; transform_[1][3] = 0.0f;
-			transform_[2][0] = 0.0f; transform_[2][1] = 0.0f; transform_[2][2] = 1.0f; transform_[2][3] = 0.0f;
-			transform_[3][0] = 0.0f; transform_[3][1] = 0.0f; transform_[3][2] = 0.0f; transform_[3][3] = 1.0f;
-
-			transformInverse_[0][0] = 1.0f; transformInverse_[0][1] = 0.0f; transformInverse_[0][2] = 0.0f; transformInverse_[0][3] = 0.0f;
-			transformInverse_[1][0] = 0.0f; transformInverse_[1][1] = 1.0f; transformInverse_[1][2] = 0.0f; transformInverse_[1][3] = 0.0f;
-			transformInverse_[2][0] = 0.0f; transformInverse_[2][1] = 0.0f; transformInverse_[2][2] = 1.0f; transformInverse_[2][3] = 0.0f;
-			transformInverse_[3][0] = 0.0f; transformInverse_[3][1] = 0.0f; transformInverse_[3][2] = 0.0f; transformInverse_[3][3] = 1.0f;
 		}
 
 		Object::~Object() noexcept
@@ -23,28 +14,28 @@ namespace octoon
 		}
 
 		void
-		Object::setTransform(const float m[4][4], const float minv[4][4]) noexcept
+		Object::setTransform(const RadeonRays::matrix& m, const RadeonRays::matrix& minv) noexcept
 		{
-			std::memcpy(transform_, m, sizeof(float) * 4 * 4);
-			std::memcpy(transformInverse_, minv, sizeof(float) * 4 * 4);
+			transform_ = m;
+			transformInverse_ = minv;
 		}
 
-		const float*
+		const RadeonRays::matrix&
 		Object::getTransform() const noexcept
 		{
-			return (const float*)transform_;
+			return transform_;
 		}
 
-		const float*
+		const RadeonRays::matrix&
 		Object::getTransformInverse() const noexcept
 		{
-			return (const float*)transformInverse_;
+			return transformInverse_;
 		}
 
 		RadeonRays::float3
 		Object::getTranslate() const noexcept
 		{
-			return RadeonRays::float3(transform_[3][0], transform_[3][1], transform_[3][2]);
+			return RadeonRays::float3(transform_.m30, transform_.m31, transform_.m32);
 		}
 	}
 }

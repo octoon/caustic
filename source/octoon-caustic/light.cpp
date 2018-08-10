@@ -16,19 +16,15 @@ namespace octoon
 		}
 
 		void 
-		Light::setColor(const float color[3]) noexcept
+		Light::setColor(const RadeonRays::float3& color) noexcept
 		{
-			color_[0] = color[0];
-			color_[1] = color[1];
-			color_[2] = color[2];
+			color_ = color;
 		}
 
-		void
-		Light::getColor(float color[3]) const noexcept
+		const RadeonRays::float3&
+		Light::getColor() const noexcept
 		{
-			color[0] = color_[0];
-			color[1] = color_[1];
-			color[2] = color_[2];
+			return color_;
 		}
 
 		RadeonRays::float3

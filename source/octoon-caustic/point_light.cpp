@@ -8,6 +8,13 @@ namespace octoon
 		{
 		}
 
+		PointLight::PointLight(const RadeonRays::float3& pos, const RadeonRays::float3& color) noexcept
+		{
+			RadeonRays::matrix transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, pos.x, pos.y, pos.z, 1);
+			this->setTransform(transform, transform);
+			this->setColor(color);
+		}
+
 		PointLight::~PointLight() noexcept
 		{
 		}
@@ -15,12 +22,12 @@ namespace octoon
 		RadeonRays::float3
 		PointLight::sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
-			auto transform = this->getTransform();
-			auto x = transform[3 * 4 + 0];
-			auto y = transform[3 * 4 + 1];
-			auto z = transform[3 * 4 + 2];
+			auto L = P - this->getTranslate();
+			auto len = std::sqrt(RadeonRays::dot(L, L));
+			L = RadeonRays::normalize(L);
+			L.w = len;
 
-			return RadeonRays::float3(P[0] - x, P[1] - y, P[2] - z);
+			return L;
 		}
 	}
 }
