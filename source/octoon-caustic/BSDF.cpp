@@ -231,7 +231,7 @@ namespace octoon
 				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-				return SpecularBTDF_GGX(N, L, V, f0, mat.roughness) * mat.albedo;
+				return SpecularBTDF_GGX(N, -L, N, f0, mat.roughness) * mat.albedo;
 			}
 
 			return DiffuseBRDF(N, L, V, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
