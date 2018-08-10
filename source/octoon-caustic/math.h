@@ -94,6 +94,11 @@ namespace octoon
         else return val;
     }
 
+	template<typename T>
+	T frac(const T x) noexcept
+	{
+		return x - std::floor(x);
+	}
 }
 
 #endif
