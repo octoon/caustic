@@ -42,7 +42,31 @@ namespace octoon
         public:
             virtual T sample(const Texture1D<T>& texels, float u, float lod) noexcept
             {
-            	throw std::runtime_error("Not implemented yet.");
+            	// throw std::runtime_error("Not implemented yet.");
+				switch (this->getWrapMode())
+				{
+				case Wrap::Repeat:
+				{
+					auto x = u - std::floor(u);
+					return texels.fetch((int)std::round(x * texels.width()));
+				}
+				break;
+				case Wrap::Mirror:
+				{
+					auto iu = ((std::uint32_t)std::floor(u));
+					auto x = (iu % 2) > 0 ? 1.0f - (u - iu) : (u - iu);
+					return texels.fetch((int)std::round(x * texels.width()));
+				}
+				break;
+				case Wrap::ClampToEdge:
+				{
+					auto x = clamp(u, 0.f, 1.f);
+					return texels.fetch((int)std::round(x * texels.width()));
+				}
+				break;
+				}
+
+                return n;
             }
 
             virtual T sample(const Texture2D<T>& texels, float u, float v, float lod) noexcept
