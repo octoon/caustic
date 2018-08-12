@@ -460,11 +460,7 @@ namespace octoon
 				auto& mat = materials_[mesh.material_ids[hit.primid]];
 
 				if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
-				{
-					sample.x = mat.emissive[0];
-					sample.y = mat.emissive[1];
-					sample.z = mat.emissive[2];
-				}
+					sample = mat.emissive;
 				else
 				{
 					sample.x = 1.0f;
@@ -494,9 +490,7 @@ namespace octoon
 					float atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
 					if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
 					{
-						sample.x *= mat.emissive[0] * atten;
-						sample.y *= mat.emissive[1] * atten;
-						sample.z *= mat.emissive[2] * atten;
+						sample *= mat.emissive * atten;
 						sample *= renderData_.weights[i];
 					}
 					else
