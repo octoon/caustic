@@ -15,7 +15,7 @@ namespace octoon
 		{
 		}
 
-		void 
+		void
 		Light::setColor(const RadeonRays::float3& color) noexcept
 		{
 			color_ = color;
@@ -31,6 +31,12 @@ namespace octoon
 		Light::sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
 			return RadeonRays::float3(0, 0, 0);
+		}
+
+		RadeonRays::float3
+		Light::Li(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) const noexcept
+		{
+			return RadeonRays::float3(1, 1, 1);
 		}
 	}
 }

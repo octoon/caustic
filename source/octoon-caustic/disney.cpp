@@ -210,14 +210,12 @@ namespace octoon
 			else
 			{
 				float cd_lum = luminance(mat.albedo);
-				float cs_lum = luminance(mat.specular);
+				float cs_lum = luminance(mat.specular * 0.5f);
 				float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
 				auto E = sample;
 				if (E.y <= cs_w)
 				{
-					E.y /= cs_w;
-
 					auto f0 = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
 					f0.x = lerp(f0.x, mat.albedo.x, mat.metalness);
 					f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
@@ -227,9 +225,6 @@ namespace octoon
 				}
 				else
 				{
-					E.y -= cs_w;
-					E.y /= (1.0f - cs_w);
-
 					return DiffuseBRDF(N, wo, wi, mat.roughness) * mat.albedo * (1.0f - mat.metalness);
 				}
 			}
@@ -244,7 +239,7 @@ namespace octoon
 			else
 			{
 				float cd_lum = luminance(mat.albedo);
-				float cs_lum = luminance(mat.specular);
+				float cs_lum = luminance(mat.specular * 0.5f);
 				float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
 				auto E = sample;

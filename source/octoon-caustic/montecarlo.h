@@ -26,8 +26,9 @@ namespace octoon
 
 			std::vector<RadeonRays::ray> rays[2];
 			std::vector<RadeonRays::Intersection> hits;
-			std::vector<RadeonRays::Intersection> shadowHits;
+			std::vector<int> shadowHits;
 			std::vector<RadeonRays::float3> samples;
+			std::vector<RadeonRays::float3> samplesAccum;
 			std::vector<RadeonRays::float2> random;
 			std::vector<RadeonRays::float3> weights;
 
@@ -66,7 +67,7 @@ namespace octoon
 			void GenerateCamera(const Camera& camera, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 			void GenerateLightRays(const Light& light) noexcept;
 
-			void GatherFirstSampling(std::atomic_uint32_t& sampleCounter) noexcept;
+			void GatherFirstSampling() noexcept;
 			void GatherSampling(std::int32_t pass) noexcept;
 			void GatherHits() noexcept;
 			void GatherShadowHits() noexcept;

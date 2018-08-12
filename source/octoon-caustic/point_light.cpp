@@ -1,4 +1,5 @@
 #include <octoon/caustic/point_light.h>
+#include "disney.h"
 
 namespace octoon
 {
@@ -28,6 +29,12 @@ namespace octoon
 			L.w = len;
 
 			return L;
+		}
+
+		RadeonRays::float3
+		PointLight::Li(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) const noexcept
+		{
+			return Disney_Evaluate(N, V, L, mat, Xi) * std::max(0.0f, RadeonRays::dot(N, L));
 		}
 	}
 }

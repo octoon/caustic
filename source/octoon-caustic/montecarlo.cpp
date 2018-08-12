@@ -433,15 +433,15 @@ namespace octoon
 			RadeonRays::Event* e = nullptr;
 			RadeonRays::Intersection* hit = nullptr;
 
-			api_->MapBuffer(renderData_.fr_shadowhits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->renderData_.numEstimate, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
+			api_->MapBuffer(renderData_.fr_shadowhits, RadeonRays::kMapRead, 0, sizeof(int) * this->renderData_.numEstimate, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
 
-			std::memcpy(renderData_.shadowHits.data(), hit, sizeof(RadeonRays::Intersection) * this->renderData_.numEstimate);
+			std::memcpy(renderData_.shadowHits.data(), hit, sizeof(int) * this->renderData_.numEstimate);
 
 			api_->UnmapBuffer(renderData_.fr_shadowhits, hit, &e); e->Wait(); api_->DeleteEvent(e);
 		}
 
 		void
-		MonteCarlo::GatherFirstSampling(std::atomic_uint32_t& sampleCounter) noexcept
+		MonteCarlo::GatherFirstSampling() noexcept
 		{
 			std::memset(renderData_.samples.data(), 0, sizeof(RadeonRays::float3) * this->renderData_.numEstimate);
 
@@ -470,8 +470,6 @@ namespace octoon
 					sample.x = 1.0f;
 					sample.y = 1.0f;
 					sample.z = 1.0f;
-
-					sampleCounter++;
 				}
 			}
 		}
@@ -555,11 +553,7 @@ namespace octoon
 
 				if (pass == 0)
 				{
-					std::atomic_uint32_t count = 0;
-					this->GatherFirstSampling(count);
-
-					if (count == 0)
-						break;
+					this->GatherFirstSampling();
 				}
 
 				if (pass > 0)
@@ -571,7 +565,7 @@ namespace octoon
 				{
 					this->GenerateLightRays(*light);
 
-					api_->QueryIntersection(
+					api_->QueryOcclusion(
 						renderData_.fr_shadowrays,
 						renderData_.numEstimate,
 						renderData_.fr_shadowhits,
