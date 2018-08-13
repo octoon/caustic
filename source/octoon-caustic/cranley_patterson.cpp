@@ -24,7 +24,7 @@ namespace octoon
 		{
 		}
 
-		void 
+		void
 		CranleyPatterson::setSequences(std::unique_ptr<Sequences>&& seq) noexcept
 		{
 			sequences_ = std::move(seq);
@@ -33,7 +33,7 @@ namespace octoon
 		void
 		CranleyPatterson::init_random(std::uint32_t size) noexcept
 		{
-			auto rand = [](float seed) { return fract(std::sin(seed) * 43758.5453123f); };
+			auto rand = [](float seed) { return fract(fast_sin(seed) * 43758.5453123f); };
 
 			random_.resize(size);
 
@@ -42,14 +42,14 @@ namespace octoon
 				random_[i] = rand(i - 64.340622f);
 		}
 
-		float 
+		float
 		CranleyPatterson::sample(std::uint32_t dimension, std::uint32_t frame) const noexcept
 		{
 			assert(sequences_);
 			return sequences_->sample(dimension, frame);
 		}
 
-		float 
+		float
 		CranleyPatterson::sample(std::uint32_t dimension, std::uint32_t frame, std::uint32_t index) const noexcept
 		{
 			assert(sequences_);
