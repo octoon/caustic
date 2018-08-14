@@ -146,29 +146,90 @@ namespace octoon
         public:
             virtual T sample(const Texture1D<T>& texels, float u, float lod) noexcept
             {
-				throw std::runtime_error("Not implemented yet.");
+				// normalization
+				switch (this->getWrapMode())
+				{
+				case Wrap::Repeat:
+				{
+					u = u - std::floor(u);
+				}
+				break;
+				case Wrap::Mirror:
+				{
+					auto iu = ((std::uint32_t)std::floor(u));
+					u = (iu % 2) > 0 ? 1.0f - (u - iu) : (u - iu);
+				}
+				break;
+				case Wrap::ClampToEdge:
+				{
+					u = clamp(u, 0.f, 1.f);
+				}
+				break;
+				}
+
+				float x = clamp(u, 0.f, 1.f) * texels.width();
+				float x2 = x >= texels.width() - 1 ? texels.width() - 1 : x + 1;
+
+				float xw = frac(x);
+
+				// bilinear interpolation
+				float xw1 = 1.0f - xw;
+				float xw2 = xw;
+
+				auto v1 = texels.fetch((int)std::round(x));
+				auto v2 = texels.fetch((int)std::round(x2));
+
+				v1 = v1 * xw1;
+				v2 = v2 * xw2;
+
+				return v1 + v2;
             }
 
             virtual T sample(const Texture2D<T>& texels, float u, float v, float lod) noexcept
             {
-				T x = clamp(u, 0.f, 1.f) * this->width;
-				T y = clamp(v, 0.f, 1.f) * this->height;
-				T x2 = x >= this->width - 1 ? this->width - 1 : x + 1;
-				T y2 = y >= this->height - 1 ? this->height - 1 : y + 1;
+				// normalization
+				switch (this->getWrapMode())
+				{
+				case Wrap::Repeat:
+				{
+					u = u - std::floor(u);
+					v = v - std::floor(v);
+				}
+				break;
+				case Wrap::Mirror:
+				{
+					auto iu = ((std::uint32_t)std::floor(u));
+					auto iv = ((std::uint32_t)std::floor(v));
+					u = (iu % 2) > 0 ? 1.0f - (u - iu) : (u - iu);
+					v = (iv % 2) > 0 ? 1.0f - (v - iv) : (v - iv);
+				}
+				break;
+				case Wrap::ClampToEdge:
+				{
+					u = clamp(u, 0.f, 1.f);
+					v = clamp(v, 0.f, 1.f);
+				}
+				break;
+				}
 
-				T xw = frac(x);
-				T yw = frac(y);
+				float x = u * texels.width();
+				float y = v * texels.height();
+				float x2 = x >= texels.width() - 1 ? texels.width() - 1 : x + 1;
+				float y2 = y >= texels.height() - 1 ? texels.height() - 1 : y + 1;
+
+				float xw = frac(x);
+				float yw = frac(y);
 
 				// bilinear interpolation
-				T xw1 = 1.0f - xw;
-				T xw2 = xw;
-				T yw1 = 1.0f - yw;
-				T yw2 = yw;
+				float xw1 = 1.0f - xw;
+				float xw2 = xw;
+				float yw1 = 1.0f - yw;
+				float yw2 = yw;
 
-				auto v1 = texels.fetch(x, y);
-				auto v2 = texels.fetch(x2, y);
-				auto v3 = texels.fetch(x, y2);
-				auto v4 = texels.fetch(x2, y2);
+				auto v1 = texels.fetch((int)std::round(x), (int)std::round(y));
+				auto v2 = texels.fetch((int)std::round(x2), (int)std::round(y));
+				auto v3 = texels.fetch((int)std::round(x), (int)std::round(y2));
+				auto v4 = texels.fetch((int)std::round(x2), (int)std::round(y2));
 
 				v1 = v1 * xw1 * yw1;
 				v2 = v2 * xw2 * yw1;
