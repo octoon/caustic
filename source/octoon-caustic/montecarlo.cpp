@@ -462,11 +462,7 @@ namespace octoon
 				if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
 					sample = mat.emissive;
 				else
-				{
-					sample.x = 1.0f;
-					sample.y = 1.0f;
-					sample.z = 1.0f;
-				}
+					sample = mat.albedo;
 			}
 		}
 
