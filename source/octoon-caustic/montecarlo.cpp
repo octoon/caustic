@@ -248,7 +248,7 @@ namespace octoon
 				renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
 				renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
 				renderData_.fr_shadowrays = api_->CreateBuffer(sizeof(RadeonRays::ray) * numEstimate, nullptr);
-				renderData_.fr_shadowhits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
+				renderData_.fr_shadowhits = api_->CreateBuffer(sizeof(int) * numEstimate, nullptr);
 
 				tileNums_ = numEstimate;
 			}
