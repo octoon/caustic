@@ -33,7 +33,7 @@ namespace octoon
 		void
 		CranleyPatterson::init_random(std::uint32_t size) noexcept
 		{
-			auto rand = [](float seed) { return fract(fast_sin(seed) * 43758.5453123f); };
+			auto rand = [](float seed) { return fract(std::sin(seed) * 43758.5453123f); };
 
 			random_.resize(size);
 
