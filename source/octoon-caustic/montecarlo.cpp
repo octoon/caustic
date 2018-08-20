@@ -176,7 +176,7 @@ namespace octoon
 
 				m.ior = it.ior;
 				m.metalness = saturate(it.dissolve);
-				m.roughness = std::max(1e-1f, saturate(it.shininess));
+				m.roughness = std::max(0.05f, saturate(it.shininess));
 
 				materials_.push_back(m);
 			}
@@ -222,8 +222,10 @@ namespace octoon
 			{
 				renderData_.hits.resize(numEstimate);
 				renderData_.samples.resize(numEstimate);
+				renderData_.samplesAccum.resize(numEstimate);
 				renderData_.random.resize(numEstimate);
 				renderData_.weights.resize(numEstimate);
+				renderData_.shadowRays.resize(numEstimate);
 				renderData_.shadowHits.resize(numEstimate);
 
 				renderData_.rays[0].resize(numEstimate);
@@ -248,7 +250,7 @@ namespace octoon
 				renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
 				renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
 				renderData_.fr_shadowrays = api_->CreateBuffer(sizeof(RadeonRays::ray) * numEstimate, nullptr);
-				renderData_.fr_shadowhits = api_->CreateBuffer(sizeof(int) * numEstimate, nullptr);
+				renderData_.fr_shadowhits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
 
 				tileNums_ = numEstimate;
 			}
@@ -377,7 +379,7 @@ namespace octoon
 			RadeonRays::Event* e = nullptr;
 			api_->MapBuffer(renderData_.fr_shadowrays, RadeonRays::kMapWrite, 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate, (void**)&rays, &e); e->Wait(); api_->DeleteEvent(e);
 
-			std::memset(rays, 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate);
+			std::memset(renderData_.shadowRays.data(), 0, sizeof(RadeonRays::ray) * this->renderData_.numEstimate);
 
 #pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
@@ -393,14 +395,14 @@ namespace octoon
 						auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 						auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-						RadeonRays::float4 L = light.sample(ro, norm, mat, renderData_.random[i].x);
+						RadeonRays::float4 L = light.sample(ro, norm, mat, renderData_.random[i]);
 						assert(std::isfinite(L[0] + L[1] + L[2]));
 
 						if (L.w > 0.0f)
 						{
-							auto& ray = rays[i];
+							auto& ray = renderData_.shadowRays[i];
 							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
-							ray.o = ro + ray.d * 1e-5f;
+							ray.o = ro + norm * 1e-5f;
 							ray.SetMaxT(L.w);
 							ray.SetTime(0.0f);
 							ray.SetMask(-1);
@@ -410,6 +412,8 @@ namespace octoon
 					}
 				}
 			}
+
+			std::memcpy(rays, renderData_.shadowRays.data(), sizeof(RadeonRays::ray) * this->renderData_.numEstimate);
 
 			api_->UnmapBuffer(renderData_.fr_shadowrays, rays, &e); e->Wait(); api_->DeleteEvent(e);
 		}
@@ -433,9 +437,9 @@ namespace octoon
 			RadeonRays::Event* e = nullptr;
 			RadeonRays::Intersection* hit = nullptr;
 
-			api_->MapBuffer(renderData_.fr_shadowhits, RadeonRays::kMapRead, 0, sizeof(int) * this->renderData_.numEstimate, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
+			api_->MapBuffer(renderData_.fr_shadowhits, RadeonRays::kMapRead, 0, sizeof(RadeonRays::Intersection) * this->renderData_.numEstimate, (void**)&hit, &e); e->Wait(); api_->DeleteEvent(e);
 
-			std::memcpy(renderData_.shadowHits.data(), hit, sizeof(int) * this->renderData_.numEstimate);
+			std::memcpy(renderData_.shadowHits.data(), hit, sizeof(RadeonRays::Intersection) * this->renderData_.numEstimate);
 
 			api_->UnmapBuffer(renderData_.fr_shadowhits, hit, &e); e->Wait(); api_->DeleteEvent(e);
 		}
@@ -444,6 +448,7 @@ namespace octoon
 		MonteCarlo::GatherFirstSampling() noexcept
 		{
 			std::memset(renderData_.samples.data(), 0, sizeof(RadeonRays::float3) * this->renderData_.numEstimate);
+			std::memset(renderData_.samplesAccum.data(), 0, sizeof(RadeonRays::float3) * this->renderData_.numEstimate);
 
 	#pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
@@ -452,17 +457,10 @@ namespace octoon
 					continue;
 
 				auto& hit = renderData_.hits[i];
-				auto& sample = renderData_.samples[i];
-				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
+				if (hit.shapeid == RadeonRays::kNullId)
 					continue;
 
-				auto& mesh = scene_[hit.shapeid].mesh;
-				auto& mat = materials_[mesh.material_ids[hit.primid]];
-
-				if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
-					sample = mat.emissive;
-				else
-					sample = mat.albedo;
+				renderData_.samples[i] = RadeonRays::float3(1, 1, 1);
 			}
 		}
 
@@ -478,24 +476,16 @@ namespace octoon
 				auto& hit = renderData_.hits[i];
 				auto& sample = renderData_.samples[i];
 
-				if (hit.shapeid != RadeonRays::kNullId && hit.primid != RadeonRays::kNullId)
+				if (hit.shapeid != RadeonRays::kNullId)
 				{
 					auto& mesh = scene_[hit.shapeid].mesh;
 					auto& mat = materials_[mesh.material_ids[hit.primid]];
 
 					float atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
 					if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
-					{
-						sample *= mat.emissive * atten;
-						sample *= renderData_.weights[i];
-					}
-					else
-					{
-						if (pass + 1 >= numBounces_)
-							sample *= 0.0f;
-						else
-							sample *= renderData_.weights[i] * atten;
-					}
+						sample *= mat.emissive;
+
+					sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
 				}
 			}
 		}
@@ -503,21 +493,35 @@ namespace octoon
 		void
 		MonteCarlo::GatherLightSamples(std::uint32_t pass, const Light& light) noexcept
 		{
-			auto& color = light.getColor();
+			auto& rays = renderData_.shadowRays;
+			auto& views = renderData_.rays[pass & 1];
 
 #pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 			{
-				if (!renderData_.rays[pass & 1][i].IsActive())
+				auto& shadowHit = renderData_.shadowHits[i];
+				if (shadowHit.shapeid != RadeonRays::kNullId)
 					continue;
-
+				
 				auto& hit = renderData_.hits[i];
 				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
+					continue;
+
+				auto& mesh = scene_[hit.shapeid].mesh;
+				auto& mat = materials_[mesh.material_ids[hit.primid]];
+
+				auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+				auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+
+				if (mat.ior > 1.0f)
 				{
-					auto& sample = renderData_.samples[i];
-					sample *= color;
-					sample *= renderData_.weights[i];
+					if (RadeonRays::dot(views[i].d, norm) > 0.0f)
+						norm = -norm;
 				}
+
+				auto sample = renderData_.samples[i] * light.Li(norm, -views[i].d, rays[i].d, mat, renderData_.random[i]);
+
+				renderData_.samplesAccum[i] += sample * GetPhysicalLightAttenuation(ro - light.getTranslate());
 			}
 		}
 
@@ -542,20 +546,15 @@ namespace octoon
 				this->GatherHits();
 
 				if (pass == 0)
-				{
 					this->GatherFirstSampling();
-				}
-
-				if (pass > 0)
-				{
+				else
 					this->GatherSampling(pass);
-				}
 
 				for (auto& light : scene.getLightList())
 				{
 					this->GenerateLightRays(*light);
 
-					api_->QueryOcclusion(
+					api_->QueryIntersection(
 						renderData_.fr_shadowrays,
 						renderData_.numEstimate,
 						renderData_.fr_shadowhits,
@@ -588,9 +587,9 @@ namespace octoon
 				auto index = iy * this->width_ + ix;
 
 				auto& hdr = hdr_[index];
-				hdr.x += renderData_.samples[i].x;
-				hdr.y += renderData_.samples[i].y;
-				hdr.z += renderData_.samples[i].z;
+				hdr.x += renderData_.samplesAccum[i].x;
+				hdr.y += renderData_.samplesAccum[i].y;
+				hdr.z += renderData_.samplesAccum[i].z;
 			}
 		}
 

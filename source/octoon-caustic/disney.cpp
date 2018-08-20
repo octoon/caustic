@@ -115,26 +115,37 @@ namespace octoon
 
 				// lambert = DiffuseColor * NoL / PI
 				// pdf = NoL / PI
-				float fresnel = FdV * FdL * lerp(1.0f, 1.0f / 1.51, roughness);
+				float F = FdV * FdL * lerp(1.0f, 1.0f / 1.51, roughness);
 
-				return RadeonRays::float3(fresnel, fresnel, fresnel);
+				RadeonRays::float4 brdf;
+				brdf.x = F * nl;
+				brdf.y = F * nl;
+				brdf.z = F * nl;
+				brdf.w = nl;
+
+				return brdf;
 			}
 
 			return 0;
 		}
 
-		RadeonRays::float3 SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
+		RadeonRays::float4 SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
 		{
 			float nl = RadeonRays::dot(L, N);
 			float nv = RadeonRays::dot(N, V);
+
 			if (nl > 0 && nv > 0)
 			{
 				auto H = RadeonRays::normalize(L + V);
 
 				float vh = saturate(RadeonRays::dot(V, H));
 				float nh = saturate(RadeonRays::dot(N, H));
-
+				
 				float m = roughness * roughness;
+				float m2 = m * m;
+				float spec = (nh * m2 - nh) * nh + 1;
+				float D = m2 / (spec * spec);
+				
 				float Gv = nl * (nv * (1 - m) + m);
 				float Gl = nv * (nl * (1 - m) + m);
 				float G = 0.5f / (Gv + Gl);
@@ -145,24 +156,35 @@ namespace octoon
 				// Incident light = SampleColor * NoL
 				// Microfacet specular = D*G*F / (4*NoL*NoV) = D*Vis*F
 				// pdf = D * NoH / (4 * VoH)
-				return F * G * nl * (4 * vh / nh);
+				RadeonRays::float4 brdf;
+				brdf.x = F.x * D * G * nl;
+				brdf.y = F.y * D * G * nl;
+				brdf.z = F.z * D * G * nl;
+				brdf.w = D * nh / (4 * vh);
+
+				return brdf;
 			}
 
 			return 0;
 		}
 
-		RadeonRays::float3 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
+		RadeonRays::float4 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
 		{
 			float nl = RadeonRays::dot(L, N);
-			if (nl > 0)
+			float nv = RadeonRays::dot(N, V);
+
+			if (nl > 0 && nv > 0)
 			{
 				auto H = RadeonRays::normalize(L + V);
 				
-				float nv = saturate(RadeonRays::dot(N, V));
 				float vh = saturate(RadeonRays::dot(V, H));
 				float nh = saturate(RadeonRays::dot(N, H));
 
 				float m = roughness * roughness;
+				float m2 = m * m;
+				float spec = (nh * m2 - nh) * nh + 1;
+				float D = m2 / (spec * spec);
+
 				float Gv = nl * (nv * (1 - m) + m);
 				float Gl = nv * (nl * (1 - m) + m);
 				float G = 0.5f / (Gv + Gl);
@@ -171,7 +193,16 @@ namespace octoon
 				RadeonRays::float3 Fr = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
 				RadeonRays::float3 Ft = RadeonRays::float3(1.0f, 1.0f, 1.0f) - Fr;
 
-				return Ft * G * nl * (4 * vh / nh);
+				// Incident light = SampleColor * NoL
+				// Microfacet specular = D*G*F / (4*NoL*NoV) = D*Vis*F
+				// pdf = D * NoH / (4 * VoH)
+				RadeonRays::float4 brdf;
+				brdf.x = Ft.x * D * G * nl;
+				brdf.y = Ft.y * D * G * nl;
+				brdf.z = Ft.z * D * G * nl;
+				brdf.w = D * nh / (4 * vh);
+
+				return brdf;
 			}
 
 			return 0;
@@ -196,7 +227,7 @@ namespace octoon
 			return TangentToWorld(H, n);
 		}
 
-		RadeonRays::float3 Disney_Evaluate(const RadeonRays::float3& N, const RadeonRays::float3& wi, const RadeonRays::float3& wo, const Material& mat, const RadeonRays::float2& sample) noexcept
+		RadeonRays::float4 Disney_Evaluate(const RadeonRays::float3& N, const RadeonRays::float3& wi, const RadeonRays::float3& wo, const Material& mat, const RadeonRays::float2& sample) noexcept
 		{
 			if (mat.ior > 1.0f)
 			{
@@ -210,7 +241,7 @@ namespace octoon
 			else
 			{
 				float cd_lum = luminance(mat.albedo);
-				float cs_lum = luminance(mat.specular * 0.5f);
+				float cs_lum = luminance(mat.specular);
 				float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
 				auto E = sample;
@@ -239,7 +270,7 @@ namespace octoon
 			else
 			{
 				float cd_lum = luminance(mat.albedo);
-				float cs_lum = luminance(mat.specular * 0.5f);
+				float cs_lum = luminance(mat.specular);
 				float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
 				auto E = sample;

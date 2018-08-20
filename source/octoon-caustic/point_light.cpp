@@ -23,7 +23,7 @@ namespace octoon
 		RadeonRays::float3
 		PointLight::sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
-			auto L = P - this->getTranslate();
+			auto L = this->getTranslate() - P;
 			auto len = std::sqrt(RadeonRays::dot(L, L));
 			L = RadeonRays::normalize(L);
 			L.w = len;
@@ -34,7 +34,7 @@ namespace octoon
 		RadeonRays::float3
 		PointLight::Li(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
-			return Disney_Evaluate(N, V, L, mat, Xi) * std::max(0.0f, RadeonRays::dot(N, L));
+			return this->getColor() * Disney_Evaluate(N, V, L, mat, Xi);
 		}
 	}
 }

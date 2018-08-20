@@ -26,7 +26,8 @@ namespace octoon
 
 			std::vector<RadeonRays::ray> rays[2];
 			std::vector<RadeonRays::Intersection> hits;
-			std::vector<int> shadowHits;
+			std::vector<RadeonRays::ray> shadowRays;
+			std::vector<RadeonRays::Intersection> shadowHits;
 			std::vector<RadeonRays::float3> samples;
 			std::vector<RadeonRays::float3> samplesAccum;
 			std::vector<RadeonRays::float2> random;
