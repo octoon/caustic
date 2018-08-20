@@ -60,7 +60,6 @@ namespace octoon
 			renderData_.numEstimate = 0;
 			renderData_.fr_rays = nullptr;
 			renderData_.fr_hits = nullptr;
-			renderData_.fr_intersections = nullptr;
 			renderData_.fr_shadowrays = nullptr;
 			renderData_.fr_shadowhits = nullptr;
 		}
@@ -77,8 +76,6 @@ namespace octoon
 				api_->DeleteBuffer(renderData_.fr_rays);
 			if (renderData_.fr_hits)
 				api_->DeleteBuffer(renderData_.fr_hits);
-			if (renderData_.fr_intersections)
-				api_->DeleteBuffer(renderData_.fr_intersections);
 			if (renderData_.fr_shadowhits)
 				api_->DeleteBuffer(renderData_.fr_shadowhits);
 			if (renderData_.fr_shadowrays)
@@ -522,7 +519,7 @@ namespace octoon
 
 			this->GenerateCamera(camera, offset, size);
 
-			for (std::int32_t pass = 0; pass < this->numBounces_; pass++)
+			for (std::int32_t pass = 0; pass < 1; pass++)
 			{
 				api_->QueryIntersection(
 					renderData_.fr_rays,
