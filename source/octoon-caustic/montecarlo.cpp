@@ -16,7 +16,12 @@ namespace octoon
 {
 	namespace caustic
 	{
-		float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius = std::numeric_limits<float>::max(), float attenuationBulbSize = 1.0f)
+		float GetPhysicalLightAttenuation(const RadeonRays::float3& L)
+		{
+			return 1.0f / std::max(1.0f, RadeonRays::dot(L, L));
+		}
+
+		float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius, float attenuationBulbSize)
 		{
 			const float invRadius = 1.0f / radius;
 			float d = std::sqrt(RadeonRays::dot(L, L));
