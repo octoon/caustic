@@ -126,11 +126,11 @@ namespace octoon
 		RadeonRays::float3 SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
 		{
 			float nl = RadeonRays::dot(L, N);
-			if (nl > 0)
+			float nv = RadeonRays::dot(N, V);
+			if (nl > 0 && nv > 0)
 			{
 				auto H = RadeonRays::normalize(L + V);
 
-				float nv = saturate(RadeonRays::dot(N, V));
 				float vh = saturate(RadeonRays::dot(V, H));
 				float nh = saturate(RadeonRays::dot(N, H));
 
@@ -153,11 +153,11 @@ namespace octoon
 
 		RadeonRays::float3 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
 		{
-			float nl = saturate(RadeonRays::dot(L, N));
+			float nl = RadeonRays::dot(L, N);
 			if (nl > 0)
 			{
 				auto H = RadeonRays::normalize(L + V);
-
+				
 				float nv = saturate(RadeonRays::dot(N, V));
 				float vh = saturate(RadeonRays::dot(V, H));
 				float nh = saturate(RadeonRays::dot(N, H));
@@ -205,7 +205,7 @@ namespace octoon
 				f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 				f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-				return SpecularBTDF_GGX(N, -wo, N, f0, mat.roughness) * mat.albedo;
+				return SpecularBTDF_GGX(N, -wo, N, f0, mat.roughness);
 			}
 			else
 			{
