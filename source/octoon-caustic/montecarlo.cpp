@@ -519,7 +519,7 @@ namespace octoon
 
 			this->GenerateCamera(camera, offset, size);
 
-			for (std::int32_t pass = 0; pass < 1; pass++)
+			for (std::int32_t pass = 0; pass < this->numBounces_; pass++)
 			{
 				api_->QueryIntersection(
 					renderData_.fr_rays,
