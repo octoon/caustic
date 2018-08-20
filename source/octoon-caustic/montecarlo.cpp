@@ -399,7 +399,7 @@ namespace octoon
 						{
 							auto& ray = renderData_.shadowRays[i];
 							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
-							ray.o = ro + norm * 1e-3f;
+							ray.o = ro + ray.d * 1e-3f;
 							ray.SetMaxT(L.w);
 							ray.SetTime(0.0f);
 							ray.SetMask(-1);
