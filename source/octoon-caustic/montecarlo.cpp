@@ -479,12 +479,9 @@ namespace octoon
 				if (hit.shapeid != RadeonRays::kNullId)
 				{
 					auto& mesh = scene_[hit.shapeid].mesh;
-					auto& mat = materials_[mesh.material_ids[hit.primid]];
 
-					float atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt));
-					if (mat.emissive[0] > 0.0f || mat.emissive[1] > 0.0f || mat.emissive[2] > 0.0f)
-						sample *= mat.emissive;
-
+					auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+					auto atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - ro);
 					sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
 				}
 			}
@@ -499,14 +496,14 @@ namespace octoon
 #pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 			{
+				auto& hit = renderData_.hits[i];
+				if (hit.shapeid == RadeonRays::kNullId)
+					continue;
+
 				auto& shadowHit = renderData_.shadowHits[i];
 				if (shadowHit.shapeid != RadeonRays::kNullId)
 					continue;
 				
-				auto& hit = renderData_.hits[i];
-				if (hit.shapeid == RadeonRays::kNullId || hit.primid == RadeonRays::kNullId)
-					continue;
-
 				auto& mesh = scene_[hit.shapeid].mesh;
 				auto& mat = materials_[mesh.material_ids[hit.primid]];
 
