@@ -16,11 +16,11 @@ namespace octoon
 			float phi = 2 * PI * Xi.x;
 
 			float cosTheta = 1 - 2 * Xi.y;
-			float sinTheta = fast_sqrt(1 - cosTheta * cosTheta);
+			float sinTheta = std::sqrt(1 - cosTheta * cosTheta);
 
 			RadeonRays::float4 H;
-			H.x = fast_cos(phi) * sinTheta;
-			H.y = fast_sin(phi) * sinTheta;
+			H.x = std::cos(phi) * sinTheta;
+			H.y = std::sin(phi) * sinTheta;
 			H.z = cosTheta;
 			H.w = 1.0 / (4 * PI);
 
@@ -32,11 +32,11 @@ namespace octoon
 			float phi = Xi.x * 2 * PI;
 
 			float cosTheta = Xi.y;
-			float sinTheta = fast_sqrt(1.0f - cosTheta * cosTheta);
+			float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
 
 			RadeonRays::float3 H;
-			H.x = fast_cos(phi) * sinTheta;
-			H.y = fast_sin(phi) * sinTheta;
+			H.x = std::cos(phi) * sinTheta;
+			H.y = std::sin(phi) * sinTheta;
 			H.z = cosTheta;
 			H.w = 1.0f / (2 * PI);
 
@@ -47,11 +47,11 @@ namespace octoon
 		{
 			float phi = 2 * PI * Xi.x;
 			float cosTheta = CosThetaMax * (1 - Xi.y) + Xi.y;
-			float sinTheta = fast_sqrt(1 - cosTheta * cosTheta);
+			float sinTheta = std::sqrt(1 - cosTheta * cosTheta);
 
 			RadeonRays::float3 H;
-			H.x = sinTheta * fast_cos(phi);
-			H.y = sinTheta * fast_sin(phi);
+			H.x = sinTheta * std::cos(phi);
+			H.y = sinTheta * std::sin(phi);
 			H.z = cosTheta;
 			H.w = 1.0f / (2 * PI * (1 - CosThetaMax));
 
@@ -62,12 +62,12 @@ namespace octoon
 		{
 			float phi = Xi.x * 2.0f * PI;
 
-			float cosTheta = fast_sqrt(Xi.y);
-			float sinTheta = fast_sqrt(1.0f - cosTheta * cosTheta);
+			float cosTheta = std::sqrt(Xi.y);
+			float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
 
 			RadeonRays::float3 H;
-			H.x = fast_cos(phi) * sinTheta;
-			H.y = fast_sin(phi) * sinTheta;
+			H.x = std::cos(phi) * sinTheta;
+			H.y = std::sin(phi) * sinTheta;
 			H.z = cosTheta;
 			H.w = cosTheta * (1 / PI);
 
@@ -89,11 +89,11 @@ namespace octoon
 
 			float n = 2 / a2 - 2;
 			float cosTheta = std::pow(Xi.y, 1 / (n + 1));
-			float sinTheta = fast_sqrt(1 - cosTheta * cosTheta);
+			float sinTheta = std::sqrt(1 - cosTheta * cosTheta);
 
 			RadeonRays::float3 H;
-			H.x = sinTheta * fast_cos(phi);
-			H.y = sinTheta * fast_sin(phi);
+			H.x = sinTheta * std::cos(phi);
+			H.y = sinTheta * std::sin(phi);
 			H.z = cosTheta;
 
 			return H;
@@ -140,12 +140,12 @@ namespace octoon
 
 				float vh = saturate(RadeonRays::dot(V, H));
 				float nh = saturate(RadeonRays::dot(N, H));
-				
+
 				float m = roughness * roughness;
 				float m2 = m * m;
 				float spec = (nh * m2 - nh) * nh + 1;
 				float D = m2 / (spec * spec);
-				
+
 				float Gv = nl * (nv * (1 - m) + m);
 				float Gl = nv * (nl * (1 - m) + m);
 				float G = 0.5f / (Gv + Gl);
@@ -176,7 +176,7 @@ namespace octoon
 			if (nl > 0 && nv > 0)
 			{
 				auto H = RadeonRays::normalize(L + V);
-				
+
 				float vh = saturate(RadeonRays::dot(V, H));
 				float nh = saturate(RadeonRays::dot(N, H));
 

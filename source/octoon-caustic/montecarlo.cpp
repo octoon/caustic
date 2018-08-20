@@ -18,13 +18,13 @@ namespace octoon
 	{
 		float GetPhysicalLightAttenuation(const RadeonRays::float3& L)
 		{
-			return 1.0f / std::max(1.0f, RadeonRays::dot(L, L));
+			return 1.0f / std::max(1.0f, L.sqnorm());
 		}
 
 		float GetPhysicalLightAttenuation(const RadeonRays::float3& L, float radius, float attenuationBulbSize)
 		{
 			const float invRadius = 1.0f / radius;
-			float d = std::sqrt(RadeonRays::dot(L, L));
+			float d = std::sqrt(L.sqnorm());
 			float fadeoutFactor = std::min(1.0f, std::max(0.0f, (radius - d) * (invRadius / 0.2f)));
 			d = std::max(d - attenuationBulbSize, 0.0f);
 			float denom = 1.0f + d / attenuationBulbSize;
@@ -38,9 +38,9 @@ namespace octoon
 			auto i1 = indices[prim_id * 3 + 1];
 			auto i2 = indices[prim_id * 3 + 2];
 
-			RadeonRays::float3 a = { vec[i0 * 3], vec[i0 * 3 + 1], vec[i0 * 3 + 2], };
-			RadeonRays::float3 b = { vec[i1 * 3], vec[i1 * 3 + 1], vec[i1 * 3 + 2], };
-			RadeonRays::float3 c = { vec[i2 * 3], vec[i2 * 3 + 1], vec[i2 * 3 + 2], };
+			RadeonRays::float3 a(vec[i0 * 3], vec[i0 * 3 + 1], vec[i0 * 3 + 2]);
+			RadeonRays::float3 b(vec[i1 * 3], vec[i1 * 3 + 1], vec[i1 * 3 + 2]);
+			RadeonRays::float3 c(vec[i2 * 3], vec[i2 * 3 + 1], vec[i2 * 3 + 2]);
 
 			return a * (1 - barycentrics.x - barycentrics.y) + b * barycentrics.x + c * barycentrics.y;
 		}
@@ -151,8 +151,7 @@ namespace octoon
 			if (deviceidx == std::string::npos) return false;
 
 			this->api_ = RadeonRays::IntersectionApi::Create(deviceidx);
-
-			return true;
+			return this->api_ != nullptr;
 		}
 
 		bool
@@ -181,12 +180,12 @@ namespace octoon
 
 				m.ior = it.ior;
 				m.metalness = saturate(it.dissolve);
-				m.roughness = std::max(0.05f, saturate(it.shininess));
+				m.roughness = std::max(0.02f, saturate(it.shininess));
 
 				materials_.push_back(m);
 			}
 
-			return res != "" ? false : true;
+			return res.empty();
 		}
 
 		bool
@@ -242,9 +241,6 @@ namespace octoon
 				if (renderData_.fr_hits)
 					api_->DeleteBuffer(renderData_.fr_hits);
 
-				if (renderData_.fr_intersections)
-					api_->DeleteBuffer(renderData_.fr_intersections);
-
 				if (renderData_.fr_shadowrays)
 					api_->DeleteBuffer(renderData_.fr_shadowrays);
 
@@ -253,7 +249,6 @@ namespace octoon
 
 				renderData_.fr_rays = api_->CreateBuffer(sizeof(RadeonRays::ray) * numEstimate, nullptr);
 				renderData_.fr_hits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
-				renderData_.fr_intersections = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
 				renderData_.fr_shadowrays = api_->CreateBuffer(sizeof(RadeonRays::ray) * numEstimate, nullptr);
 				renderData_.fr_shadowhits = api_->CreateBuffer(sizeof(RadeonRays::Intersection) * numEstimate, nullptr);
 
@@ -407,7 +402,7 @@ namespace octoon
 						{
 							auto& ray = renderData_.shadowRays[i];
 							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
-							ray.o = ro + norm * 1e-5f;
+							ray.o = ro + norm * 1e-3f;
 							ray.SetMaxT(L.w);
 							ray.SetTime(0.0f);
 							ray.SetMask(-1);
@@ -458,14 +453,9 @@ namespace octoon
 	#pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 			{
-				if (!renderData_.rays[0][i].IsActive())
-					continue;
-
 				auto& hit = renderData_.hits[i];
-				if (hit.shapeid == RadeonRays::kNullId)
-					continue;
-
-				renderData_.samples[i] = RadeonRays::float3(1, 1, 1);
+				if (hit.shapeid != RadeonRays::kNullId)
+					renderData_.samples[i] = RadeonRays::float3(1, 1, 1);
 			}
 		}
 
@@ -475,18 +465,15 @@ namespace octoon
 	#pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 			{
-				if (!renderData_.rays[pass & 1][i].IsActive())
-					continue;
-
 				auto& hit = renderData_.hits[i];
-				auto& sample = renderData_.samples[i];
-
 				if (hit.shapeid != RadeonRays::kNullId)
 				{
 					auto& mesh = scene_[hit.shapeid].mesh;
 
 					auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - ro);
+
+					auto& sample = renderData_.samples[i];
 					sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
 				}
 			}
@@ -508,7 +495,7 @@ namespace octoon
 				auto& shadowHit = renderData_.shadowHits[i];
 				if (shadowHit.shapeid != RadeonRays::kNullId)
 					continue;
-				
+
 				auto& mesh = scene_[hit.shapeid].mesh;
 				auto& mat = materials_[mesh.material_ids[hit.primid]];
 
@@ -552,6 +539,9 @@ namespace octoon
 				else
 					this->GatherSampling(pass);
 
+				// prepare ray for indirect lighting gathering
+				this->GenerateRays(pass);
+
 				for (auto& light : scene.getLightList())
 				{
 					this->GenerateLightRays(*light);
@@ -567,9 +557,6 @@ namespace octoon
 					this->GatherShadowHits();
 					this->GatherLightSamples(pass, *light);
 				}
-
-				// prepare ray for indirect lighting gathering
-				this->GenerateRays(pass);
 			}
 
 			this->AccumSampling(frame, offset, size);

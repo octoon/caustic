@@ -20,6 +20,7 @@ SOURCE_GROUP("octoon-caustic\\sequences" FILES ${SEQUENCES_LIST})
 SET(BXDF_LIST
 	${SOURCE_PATH}/disney.h
 	${SOURCE_PATH}/disney.cpp
+	${SOURCE_PATH}/math.h
 )
 SOURCE_GROUP("octoon-caustic\\BRDF" FILES ${BXDF_LIST})
 

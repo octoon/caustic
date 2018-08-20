@@ -49,6 +49,8 @@ namespace octoon
 
 	inline float fast_sin(float x)
 	{
+		assert(x >= -PI && x <= PI);
+
 		constexpr float B = 4.0f / PI;
 		constexpr float C = -4.0f / (PI * PI);
 		constexpr float P = 0.225f;
@@ -59,6 +61,8 @@ namespace octoon
 
 	inline float fast_cos(float x)
 	{
+		assert(x >= -PI && x <= PI);
+
 		constexpr float B = 4.0f / PI;
 		constexpr float C = -4.0f / (PI * PI);
 		constexpr float P = 0.225f;

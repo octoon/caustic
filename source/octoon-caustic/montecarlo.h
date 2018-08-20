@@ -37,7 +37,6 @@ namespace octoon
 			RadeonRays::Buffer* fr_shadowrays;
 			RadeonRays::Buffer* fr_shadowhits;
 			RadeonRays::Buffer* fr_hits;
-			RadeonRays::Buffer* fr_intersections;
 			RadeonRays::Buffer* fr_hitcount;
 		};
 
