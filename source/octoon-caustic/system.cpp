@@ -2,6 +2,7 @@
 #include <octoon/caustic/ambient_light.h>
 #include <octoon/caustic/film_camera.h>
 #include <octoon/caustic/point_light.h>
+#include <octoon/caustic/sphere_light.h>
 #include "montecarlo.h"
 
 namespace octoon
@@ -48,7 +49,7 @@ namespace octoon
 
 			scene_ = std::make_shared<Scene>();
 			//scene_->addRenderObject(std::make_shared<AmbientLight>(RadeonRays::float3(8.0f, 8.0f, 8.0f)));
-			scene_->addRenderObject(std::make_shared<PointLight>(RadeonRays::float3(0.0f, 1.5f, 0.0f), RadeonRays::float3(28.0f, 28.0f, 28.0f)));
+			scene_->addRenderObject(std::make_shared<SphereLight>(RadeonRays::float3(0.0f, 1.5f, 0.0f), RadeonRays::float3(28.0f, 28.0f, 28.0f), 0.1f));
 			scene_->addRenderObject(std::move(camera));
 
  			thread_ = std::thread(std::bind(&System::thread, this));

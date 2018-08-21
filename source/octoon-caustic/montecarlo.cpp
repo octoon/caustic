@@ -528,9 +528,6 @@ namespace octoon
 				else
 					this->GatherSampling(pass);
 
-				// prepare ray for indirect lighting gathering
-				this->GenerateRays(pass);
-
 				for (auto& light : scene.getLightList())
 				{
 					this->GenerateLightRays(*light);
@@ -546,6 +543,9 @@ namespace octoon
 					this->GatherShadowHits();
 					this->GatherLightSamples(pass, *light);
 				}
+
+				// prepare ray for indirect lighting gathering
+				this->GenerateRays(pass);
 			}
 
 			this->AccumSampling(frame, offset, size);
