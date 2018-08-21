@@ -390,7 +390,7 @@ namespace octoon
 						{
 							auto& ray = renderData_.shadowRays[i];
 							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
-							ray.o = ro + norm * 1e-3f;
+							ray.o = ro + ray.d * 1e-5f;
 							ray.SetMaxT(L.w);
 							ray.SetTime(0.0f);
 							ray.SetMask(-1);
@@ -490,13 +490,6 @@ namespace octoon
 
 				auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 				auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-
-				if (mat.ior > 1.0f)
-				{
-					if (RadeonRays::dot(views[i].d, norm) > 0.0f)
-						norm = -norm;
-				}
-
 				auto sample = renderData_.samples[i] * light.Li(norm, -views[i].d, rays[i].d, mat, renderData_.random[i]);
 
 				renderData_.samplesAccum[i] += sample * GetPhysicalLightAttenuation(ro - light.getTranslate());

@@ -6,6 +6,30 @@ namespace octoon
 {
 	namespace caustic
 	{
+		float SmithG_GGX(float nv, float alpha)
+		{
+			float a = alpha * alpha;
+			float b = nv * nv;
+			return 1 / (nv + std::sqrt(a + b - a * b));
+		}
+
+		float SmithGGX_Correlated(float nl, float nv, float alpha)
+		{
+			// Height correlated Smith GGX geometry term as defined in (equation 3 of section 3.1.2):
+			// Course notes "Moving Frostbite to PBR" by DICE
+			// http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr.pdf
+			float alpha2 = alpha * alpha;
+			float nl2 = nl * nl;
+			float nv2 = nv * nv;
+
+			// Original formulation of G_SmithGGX Correlated
+			float Gv = (-1 + sqrt(1 + alpha2 * (1 - nv2) / nv2)) / 2.0f;
+			float Gl = (-1 + sqrt(1 + alpha2 * (1 - nl2) / nl2)) / 2.0f;
+			float G = 1 / (1 + Gv + Gl);
+
+			return G;
+		}
+
 		RadeonRays::float3 DiffuseBRDF(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, float roughness)
 		{
 			float nl = RadeonRays::dot(L, N);
@@ -75,9 +99,9 @@ namespace octoon
 			return RadeonRays::float4(0, 0, 0, 1);
 		}
 
-		RadeonRays::float4 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
+		RadeonRays::float4 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness, float ior)
 		{
-			float nl = RadeonRays::dot(L, N);
+			float nl = RadeonRays::dot(N, L);
 			float nv = RadeonRays::dot(N, V);
 
 			if (nl > 0 && nv > 0)
@@ -86,6 +110,7 @@ namespace octoon
 
 				float vh = saturate(RadeonRays::dot(V, H));
 				float nh = saturate(RadeonRays::dot(N, H));
+				float lh = saturate(RadeonRays::dot(L, H));
 
 				float m = roughness * roughness;
 				float m2 = m * m;
@@ -94,20 +119,25 @@ namespace octoon
 
 				float Gv = nl * (nv * (1 - m) + m);
 				float Gl = nv * (nl * (1 - m) + m);
-				float G = 0.5f / (Gv + Gl);
+				float G = 0.5f / (Gv + Gl) * (4 * nl * nv);
 
-				float Fc = pow5(1 - nv);
-				RadeonRays::float3 Fr = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
-				RadeonRays::float3 Ft = RadeonRays::float3(1.0f, 1.0f, 1.0f) - Fr;
+				float Fc = pow5(1 - lh);
+				RadeonRays::float3 F = f0 * (1 - Fc) + RadeonRays::float3(Fc, Fc, Fc);
 
-				// Incident light = SampleColor * NoL
-				// Microfacet specular = D*G*F / (4*NoL*NoV) = D*Vis*F
-				// pdf = D * NoH / (4 * VoH)
+				// Refraction term according to equation 21 of:
+				// https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
+				float ni = ior;
+				float no = ior;
+				float no2 = ior * ior;
+				float A = (lh * vh) / (nl * nv);
+				float B = (ni * lh + no * vh);
+				float B2 = B * B;
+
 				RadeonRays::float4 brdf;
-				brdf.x = Ft.x * D * G * nl;
-				brdf.y = Ft.y * D * G * nl;
-				brdf.z = Ft.z * D * G * nl;
-				brdf.w = D * nh / (4 * vh);
+				brdf.x = A * no2 * (1.0f - F.x) * D * G * nl / B2;
+				brdf.y = A * no2 * (1.0f - F.y) * D * G * nl / B2;
+				brdf.z = A * no2 * (1.0f - F.z) * D * G * nl / B2;
+				brdf.w = A * no2 * D / B2;
 
 				return brdf;
 			}
@@ -159,7 +189,7 @@ namespace octoon
 					f0.y = lerp(f0.y, mat.albedo.y, mat.metalness);
 					f0.z = lerp(f0.z, mat.albedo.z, mat.metalness);
 
-					return SpecularBTDF_GGX(N, -wo, wi, f0, mat.roughness);
+					return SpecularBTDF_GGX(N, -wo, wi, f0, mat.roughness, mat.ior);
 				}
 				else
 				{
