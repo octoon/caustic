@@ -47,9 +47,13 @@ namespace octoon
 			auto camera = std::make_shared<FilmCamera>();
 			camera->setTransform(transform, transform);
 
+			auto sphereLight = std::make_shared<SphereLight>(RadeonRays::float3(0.0f, 1.5f, 0.0f), RadeonRays::float3(28.0f, 28.0f, 28.0f));
+			sphereLight->setRadius(0.1f);
+			sphereLight->setTemperature(6000);
+
 			scene_ = std::make_shared<Scene>();
 			//scene_->addRenderObject(std::make_shared<AmbientLight>(RadeonRays::float3(8.0f, 8.0f, 8.0f)));
-			scene_->addRenderObject(std::make_shared<SphereLight>(RadeonRays::float3(0.0f, 1.5f, 0.0f), RadeonRays::float3(28.0f, 28.0f, 28.0f), 0.1f));
+			scene_->addRenderObject(std::move(sphereLight));
 			scene_->addRenderObject(std::move(camera));
 
  			thread_ = std::thread(std::bind(&System::thread, this));

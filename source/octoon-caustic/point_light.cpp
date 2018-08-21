@@ -34,7 +34,7 @@ namespace octoon
 		RadeonRays::float3
 		PointLight::Li(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
-			return this->getColor() * Disney_Evaluate(N, V, L, mat, Xi);
+			return this->getColor() * this->getColorTemperature() * Disney_Evaluate(N, V, L, mat, Xi);
 		}
 	}
 }
