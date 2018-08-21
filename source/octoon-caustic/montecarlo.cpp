@@ -171,10 +171,6 @@ namespace octoon
 				m.specular.y = std::pow(it.specular[1], 2.2f) * 0.04f;
 				m.specular.z = std::pow(it.specular[2], 2.2f) * 0.04f;
 
-				m.emissive.x /= (4 * PI / it.illum);
-				m.emissive.y /= (4 * PI / it.illum);
-				m.emissive.z /= (4 * PI / it.illum);
-
 				m.ior = it.ior;
 				m.metalness = saturate(it.dissolve);
 				m.roughness = std::max(0.02f, saturate(it.shininess));
@@ -344,15 +340,10 @@ namespace octoon
 								norm = -norm;
 						}
 
-						RadeonRays::float3 L = Disney_Sample(norm, -view.d, mat, renderData_.random[i]);
-						if (mat.ior <= 1.0f)
-						{
-							if (RadeonRays::dot(norm, L) < 0.0f || RadeonRays::dot(view.d, norm) > 0.0f)
-								continue;
-						}
+						RadeonRays::float3 L;
+						renderData_.weights[i] = Disney_Sample(norm, -view.d, mat, renderData_.random[i], L);
 
-						renderData_.weights[i] = Disney_Evaluate(norm, -view.d, L, mat, renderData_.random[i]);
-
+						assert(renderData_.weights[i].w > 0.0f);
 						ray.d = L;
 						ray.o = ro + L * 1e-5f;
 						ray.SetMaxT(std::numeric_limits<float>::max());
@@ -399,7 +390,7 @@ namespace octoon
 						{
 							auto& ray = renderData_.shadowRays[i];
 							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
-							ray.o = ro + ray.d * 1e-3f;
+							ray.o = ro + norm * 1e-3f;
 							ray.SetMaxT(L.w);
 							ray.SetTime(0.0f);
 							ray.SetMask(-1);
@@ -469,7 +460,8 @@ namespace octoon
 
 					auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - ro);
-
+					
+					assert(renderData_.weights[i].w>0);
 					auto& sample = renderData_.samples[i];
 					sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
 				}

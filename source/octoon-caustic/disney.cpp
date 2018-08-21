@@ -118,15 +118,15 @@ namespace octoon
 				float F = FdV * FdL * lerp(1.0f, 1.0f / 1.51, roughness);
 
 				RadeonRays::float4 brdf;
-				brdf.x = F * nl;
-				brdf.y = F * nl;
-				brdf.z = F * nl;
-				brdf.w = nl;
+				brdf.x = F * nl / PI;
+				brdf.y = F * nl / PI;
+				brdf.z = F * nl / PI;
+				brdf.w = nl / PI;
 
 				return brdf;
 			}
 
-			return 0;
+			return RadeonRays::float4(0, 0, 0, 1);
 		}
 
 		RadeonRays::float4 SpecularBRDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
@@ -165,7 +165,7 @@ namespace octoon
 				return brdf;
 			}
 
-			return 0;
+			return RadeonRays::float4(0, 0, 0, 1);
 		}
 
 		RadeonRays::float4 SpecularBTDF_GGX(const RadeonRays::float3& N, const RadeonRays::float3& L, const RadeonRays::float3& V, const RadeonRays::float3& f0, float roughness)
@@ -205,7 +205,7 @@ namespace octoon
 				return brdf;
 			}
 
-			return 0;
+			return RadeonRays::float4(0, 0, 0, 1);
 		}
 
 		RadeonRays::float3 TangentToWorld(const RadeonRays::float3& H, const RadeonRays::float3& N)
@@ -261,7 +261,7 @@ namespace octoon
 			}
 		}
 
-		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& wi, const Material& mat, const RadeonRays::float2& sample) noexcept
+		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& wi, const Material& mat, const RadeonRays::float2& sample, RadeonRays::float4& wo) noexcept
 		{
 			float cd_lum = luminance(mat.albedo);
 			float cs_lum = luminance(mat.specular);
@@ -272,7 +272,7 @@ namespace octoon
 			{
 				E.y /= cs_w;
 
-				return reflect(-wi, LobeDirection(N, mat.roughness, E));
+				wo = RadeonRays::normalize(reflect(-wi, LobeDirection(N, mat.roughness, E)));
 			}
 			else
 			{
@@ -280,10 +280,12 @@ namespace octoon
 				E.y /= (1.0f - cs_w);
 
 				if (mat.ior > 1.0f)
-					return refract(-wi, LobeDirection(N, mat.roughness, E), 1.0f / mat.ior);
+					wo = RadeonRays::normalize(refract(-wi, LobeDirection(N, mat.roughness, E), 1.0f / mat.ior));
 				else
-					return CosineDirection(N, E);
+					wo = CosineDirection(N, E);
 			}
+
+			return Disney_Evaluate(N, wi, wo, mat, sample);
 		}
 	}
 }
