@@ -133,13 +133,13 @@ namespace octoon
 				float B = (ni * lh + no * vh);
 				float B2 = B * B;
 
-				RadeonRays::float4 brdf;
-				brdf.x = A * no2 * (1.0f - F.x) * D * G * nl / B2;
-				brdf.y = A * no2 * (1.0f - F.y) * D * G * nl / B2;
-				brdf.z = A * no2 * (1.0f - F.z) * D * G * nl / B2;
-				brdf.w = A * no2 * D / B2;
+				RadeonRays::float4 btdf;
+				btdf.x = A * no2 * (1.0f - F.x) * D * G * nl / B2;
+				btdf.y = A * no2 * (1.0f - F.y) * D * G * nl / B2;
+				btdf.z = A * no2 * (1.0f - F.z) * D * G * nl / B2;
+				btdf.w = A * no2 * D / B2;
 
-				return brdf;
+				return btdf;
 			}
 
 			return RadeonRays::float4(0, 0, 0, 1);
@@ -209,7 +209,7 @@ namespace octoon
 			{
 				E.y /= cs_w;
 
-				wo = RadeonRays::normalize(reflect(-wi, LobeDirection(N, mat.roughness, E)));
+				wo = LobeDirection(reflect(-wi, N), mat.roughness, E);
 			}
 			else
 			{
