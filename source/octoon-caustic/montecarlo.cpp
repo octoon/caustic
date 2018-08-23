@@ -339,12 +339,6 @@ namespace octoon
 					auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 
-					if (mat.ior > 1.0f)
-					{
-						if (RadeonRays::dot(view.d, norm) > 0.0f)
-							norm = -norm;
-					}
-
 					RadeonRays::float3 L;
 					renderData_.weights[i] = Disney_Sample(norm, -view.d, mat, renderData_.random[i], L);
 
@@ -476,14 +470,12 @@ namespace octoon
 					
 					assert(renderData_.weights[i].w > 0);
 
+					auto& sample = renderData_.samples[i];
+					sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
+
 					if (mat.isEmissive())
 					{
-						renderData_.samplesAccum[i] += renderData_.samples[i] * renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * mat.emissive * atten;
-					}
-					else
-					{
-						auto& sample = renderData_.samples[i];
-						sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
+						renderData_.samplesAccum[i] += renderData_.samples[i] * mat.emissive;
 					}
 				}
 			}

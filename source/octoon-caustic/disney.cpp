@@ -198,12 +198,13 @@ namespace octoon
 			}
 		}
 
-		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& N, const RadeonRays::float3& wi, const Material& mat, const RadeonRays::float2& sample, RadeonRays::float4& wo) noexcept
+		RadeonRays::float3 Disney_Sample(const RadeonRays::float3& norm, const RadeonRays::float3& wi, const Material& mat, const RadeonRays::float2& sample, RadeonRays::float4& wo) noexcept
 		{
 			float cd_lum = luminance(mat.albedo);
 			float cs_lum = luminance(mat.specular);
 			float cs_w = cs_lum / (cs_lum + (1.f - mat.metalness) * cd_lum);
 
+			auto N = norm;
 			auto E = sample;
 			if (E.y <= cs_w)
 			{
@@ -217,9 +218,16 @@ namespace octoon
 				E.y /= (1.0f - cs_w);
 
 				if (mat.ior > 1.0f)
+				{
+					if (RadeonRays::dot(wi, N) < 0.0f)
+						N = -N;
+
 					wo = RadeonRays::normalize(refract(-wi, LobeDirection(N, mat.roughness, E), 1.0f / mat.ior));
+				}
 				else
+				{
 					wo = CosineDirection(N, E);
+				}
 			}
 
 			return Disney_Evaluate(N, wi, wo, mat, sample);
