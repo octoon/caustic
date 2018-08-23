@@ -7,8 +7,9 @@ namespace octoon
 {
 	namespace caustic
 	{
-		struct Material
+		class Material
 		{
+		public:
 			RadeonRays::float3 albedo;
 			RadeonRays::float3 specular;
 			RadeonRays::float3 emissive;
@@ -16,6 +17,11 @@ namespace octoon
 			float ior;
 			float roughness;
 			float metalness;
+
+			bool isEmissive() const noexcept
+			{
+				return emissive.x != 0.0f || emissive.y != 0.0f || emissive.z != 0.0f;
+			}
 		};
 	}
 }

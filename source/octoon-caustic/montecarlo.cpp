@@ -329,29 +329,29 @@ namespace octoon
 					auto& mesh = scene_[hit.shapeid].mesh;
 					auto& mat = materials_[mesh.material_ids[hit.primid]];
 
-					if (mat.emissive.x == 0.0f || mat.emissive[1] == 0.0f || mat.emissive[2] == 0.0f)
+					if (mat.isEmissive())
+						continue;
+
+					auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+					auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+
+					if (mat.ior > 1.0f)
 					{
-						auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-						auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-
-						if (mat.ior > 1.0f)
-						{
-							if (RadeonRays::dot(view.d, norm) > 0.0f)
-								norm = -norm;
-						}
-
-						RadeonRays::float3 L;
-						renderData_.weights[i] = Disney_Sample(norm, -view.d, mat, renderData_.random[i], L);
-
-						assert(renderData_.weights[i].w > 0.0f);
-						ray.d = L;
-						ray.o = ro + L * 1e-5f;
-						ray.SetMaxT(std::numeric_limits<float>::max());
-						ray.SetTime(0.0f);
-						ray.SetMask(-1);
-						ray.SetActive(true);
-						ray.SetDoBackfaceCulling(mat.ior > 1.0f ? false : true);
+						if (RadeonRays::dot(view.d, norm) > 0.0f)
+							norm = -norm;
 					}
+
+					RadeonRays::float3 L;
+					renderData_.weights[i] = Disney_Sample(norm, -view.d, mat, renderData_.random[i], L);
+
+					assert(renderData_.weights[i].w > 0.0f);
+					ray.d = L;
+					ray.o = ro + L * 1e-5f;
+					ray.SetMaxT(std::numeric_limits<float>::max());
+					ray.SetTime(0.0f);
+					ray.SetMask(-1);
+					ray.SetActive(true);
+					ray.SetDoBackfaceCulling(mat.ior > 1.0f ? false : true);
 				}
 			}
 
@@ -378,25 +378,25 @@ namespace octoon
 					auto& mesh = scene_[hit.shapeid].mesh;
 					auto& mat = materials_[mesh.material_ids[hit.primid]];
 
-					if (mat.emissive.x == 0.0f && mat.emissive[1] == 0.0f && mat.emissive[2] == 0.0f)
+					if (mat.isEmissive())
+						continue;
+					
+					auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+					auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+
+					RadeonRays::float4 L = light.sample(ro, norm, mat, renderData_.random[i]);
+					assert(std::isfinite(L[0] + L[1] + L[2]));
+
+					if (L.w > 0.0f)
 					{
-						auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-						auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-
-						RadeonRays::float4 L = light.sample(ro, norm, mat, renderData_.random[i]);
-						assert(std::isfinite(L[0] + L[1] + L[2]));
-
-						if (L.w > 0.0f)
-						{
-							auto& ray = renderData_.shadowRays[i];
-							ray.d = RadeonRays::float3(L[0], L[1], L[2]);
-							ray.o = ro + ray.d * 1e-5f;
-							ray.SetMaxT(L.w);
-							ray.SetTime(0.0f);
-							ray.SetMask(-1);
-							ray.SetActive(true);
-							ray.SetDoBackfaceCulling(mat.ior > 1.0f ? false : true);
-						}
+						auto& ray = renderData_.shadowRays[i];
+						ray.d = RadeonRays::float3(L[0], L[1], L[2]);
+						ray.o = ro + ray.d * 1e-5f;
+						ray.SetMaxT(L.w);
+						ray.SetTime(0.0f);
+						ray.SetMask(-1);
+						ray.SetActive(true);
+						ray.SetDoBackfaceCulling(mat.ior > 1.0f ? false : true);
 					}
 				}
 			}
@@ -488,11 +488,10 @@ namespace octoon
 				auto& mesh = scene_[hit.shapeid].mesh;
 				auto& mat = materials_[mesh.material_ids[hit.primid]];
 
-				auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 				auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 				auto sample = renderData_.samples[i] * light.Li(norm, -views[i].d, rays[i].d, mat, renderData_.random[i]);
 
-				renderData_.samplesAccum[i] += sample * GetPhysicalLightAttenuation(ro - light.getTranslate());
+				renderData_.samplesAccum[i] += sample * (1.0f / (rays[i].GetMaxT() * rays[i].GetMaxT()));
 			}
 		}
 
