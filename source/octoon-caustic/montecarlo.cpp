@@ -171,6 +171,10 @@ namespace octoon
 				m.specular.y = std::pow(it.specular[1], 2.2f) * 0.04f;
 				m.specular.z = std::pow(it.specular[2], 2.2f) * 0.04f;
 
+				m.emissive.x = it.emission[0];
+				m.emissive.y = it.emission[1];
+				m.emissive.z = it.emission[2];
+
 				m.ior = it.ior;
 				m.metalness = saturate(it.dissolve);
 				m.roughness = std::max(0.02f, saturate(it.shininess));
@@ -443,7 +447,15 @@ namespace octoon
 			{
 				auto& hit = renderData_.hits[i];
 				if (hit.shapeid != RadeonRays::kNullId)
+				{
+					auto& mesh = scene_[hit.shapeid].mesh;
+					auto& mat = materials_[mesh.material_ids[hit.primid]];
+
+					if (mat.isEmissive())
+						renderData_.samplesAccum[i] += mat.emissive;
+					
 					renderData_.samples[i] = RadeonRays::float3(1, 1, 1);
+				}					
 			}
 		}
 
@@ -457,13 +469,22 @@ namespace octoon
 				if (hit.shapeid != RadeonRays::kNullId)
 				{
 					auto& mesh = scene_[hit.shapeid].mesh;
+					auto& mat = materials_[mesh.material_ids[hit.primid]];
 
 					auto ro = InterpolateVertices(mesh.positions.data(), mesh.indices.data(), hit.primid, hit.uvwt);
 					auto atten = GetPhysicalLightAttenuation(renderData_.rays[pass & 1][i].o - ro);
 					
-					assert(renderData_.weights[i].w>0);
-					auto& sample = renderData_.samples[i];
-					sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
+					assert(renderData_.weights[i].w > 0);
+
+					if (mat.isEmissive())
+					{
+						renderData_.samplesAccum[i] += renderData_.samples[i] * renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * mat.emissive * atten;
+					}
+					else
+					{
+						auto& sample = renderData_.samples[i];
+						sample *= renderData_.weights[i] * (1.0f / renderData_.weights[i].w) * atten;
+					}
 				}
 			}
 		}
