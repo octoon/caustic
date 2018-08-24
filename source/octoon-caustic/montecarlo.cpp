@@ -490,21 +490,21 @@ namespace octoon
 #pragma omp parallel for
 			for (std::int32_t i = 0; i < this->renderData_.numEstimate; ++i)
 			{
-				auto& hit = renderData_.hits[i];
-				if (hit.shapeid == RadeonRays::kNullId)
-					continue;
+				if (rays[i].IsActive())
+				{
+					auto& hit = renderData_.hits[i];
+					auto& shadowHit = renderData_.shadowHits[i];
+					if (shadowHit.shapeid != RadeonRays::kNullId)
+						continue;
 
-				auto& shadowHit = renderData_.shadowHits[i];
-				if (shadowHit.shapeid != RadeonRays::kNullId)
-					continue;
+					auto& mesh = scene_[hit.shapeid].mesh;
+					auto& mat = materials_[mesh.material_ids[hit.primid]];
 
-				auto& mesh = scene_[hit.shapeid].mesh;
-				auto& mat = materials_[mesh.material_ids[hit.primid]];
+					auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
+					auto sample = renderData_.samples[i] * light.Li(norm, -views[i].d, rays[i].d, mat, renderData_.random[i]);
 
-				auto norm = InterpolateNormals(mesh.normals.data(), mesh.indices.data(), hit.primid, hit.uvwt);
-				auto sample = renderData_.samples[i] * light.Li(norm, -views[i].d, rays[i].d, mat, renderData_.random[i]);
-
-				renderData_.samplesAccum[i] += sample * (1.0f / (rays[i].GetMaxT() * rays[i].GetMaxT()));
+					renderData_.samplesAccum[i] += sample * (1.0f / (rays[i].GetMaxT() * rays[i].GetMaxT()));
+				}
 			}
 		}
 
@@ -550,7 +550,8 @@ namespace octoon
 				}
 
 				// prepare ray for indirect lighting gathering
-				this->GenerateRays(pass);
+				if (pass + 1 < this->numBounces_)
+					this->GenerateRays(pass);
 			}
 
 			this->AccumSampling(frame, offset, size);

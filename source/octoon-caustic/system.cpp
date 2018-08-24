@@ -52,7 +52,6 @@ namespace octoon
 			sphereLight->setTemperature(6000);
 
 			scene_ = std::make_shared<Scene>();
-			//scene_->addRenderObject(std::make_shared<AmbientLight>(RadeonRays::float3(8.0f, 8.0f, 8.0f)));
 			scene_->addRenderObject(std::move(sphereLight));
 			scene_->addRenderObject(std::move(camera));
 
