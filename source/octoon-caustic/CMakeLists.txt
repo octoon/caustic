@@ -30,10 +30,10 @@ SET(MATERIAL_LIST
 SOURCE_GROUP("octoon-caustic\\material" FILES ${MATERIAL_LIST})
 
 SET(SCENE_LIST
-	${HEADER_PATH}/object.h
-	${SOURCE_PATH}/object.cpp
-	${HEADER_PATH}/scene.h
-	${SOURCE_PATH}/scene.cpp
+	${HEADER_PATH}/render_object.h
+	${SOURCE_PATH}/render_object.cpp
+	${HEADER_PATH}/render_scene.h
+	${SOURCE_PATH}/render_scene.cpp
 )
 SOURCE_GROUP("octoon-caustic\\scene" FILES ${SCENE_LIST})
 
@@ -52,8 +52,6 @@ SOURCE_GROUP("octoon-caustic\\scene\\camera" FILES ${CAMERA_LIST})
 SET(LIGHT_LIST
 	${HEADER_PATH}/light.h
 	${SOURCE_PATH}/light.cpp
-	${HEADER_PATH}/ambient_light.h
-	${SOURCE_PATH}/ambient_light.cpp
 	${HEADER_PATH}/directional_light.h
 	${SOURCE_PATH}/directional_light.cpp
 	${HEADER_PATH}/point_light.h

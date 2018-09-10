@@ -1,5 +1,4 @@
 #include <octoon/caustic/system.h>
-#include <octoon/caustic/ambient_light.h>
 #include <octoon/caustic/film_camera.h>
 #include <octoon/caustic/point_light.h>
 #include <octoon/caustic/sphere_light.h>

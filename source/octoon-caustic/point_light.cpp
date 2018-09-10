@@ -20,7 +20,7 @@ namespace octoon
 		{
 		}
 
-		RadeonRays::float3
+		RadeonRays::float4
 		PointLight::sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept
 		{
 			auto L = this->getTranslate() - P;
