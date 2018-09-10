@@ -90,7 +90,7 @@ namespace octoon
 	}
 
 	template <typename T, typename U, typename V>
-    T clamp(T val, U low, V high)
+	inline T clamp(T val, U low, V high)
     {
         if (val < low) return low;
         else if (val > high) return high;
@@ -98,7 +98,7 @@ namespace octoon
     }
 
 	template<typename T>
-	T frac(const T x) noexcept
+	inline T frac(const T x) noexcept
 	{
 		return x - std::floor(x);
 	}

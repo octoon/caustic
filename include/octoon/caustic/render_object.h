@@ -9,19 +9,28 @@ namespace octoon
 {
 	namespace caustic
 	{
-		class Object : public std::enable_shared_from_this<Object>
+		class RenderObject : public std::enable_shared_from_this<RenderObject>
 		{
 		public:
-			Object() noexcept;
-			virtual ~Object() noexcept;
+			RenderObject() noexcept;
+			virtual ~RenderObject() noexcept;
+
+			void setActive(bool active) noexcept;
+			bool getActive() const noexcept;
+
+			void setLayer(std::uint8_t layer) noexcept;
+			std::uint8_t getLayer() const noexcept;
+
+			void setVisible(bool enable) noexcept;
+			bool getVisible() const noexcept;
 
 			void setTransform(const RadeonRays::matrix& m, const RadeonRays::matrix& minv) noexcept;
-
 			const RadeonRays::matrix& getTransform() const noexcept;
 			const RadeonRays::matrix& getTransformInverse() const noexcept;
 
 			RadeonRays::float3 getTranslate() const noexcept;
 
+		public:
 			template<typename T>
 			bool isA()
 			{
@@ -42,10 +51,19 @@ namespace octoon
 			}
 
 		private:
-			Object(const Object&) = delete;
-			Object& operator=(const Object&) = delete;
+			virtual void onActivate() noexcept;
+			virtual void onDeactivate() noexcept;
 
 		private:
+			RenderObject(const RenderObject&) = delete;
+			RenderObject& operator=(const RenderObject&) = delete;
+
+		private:
+			bool active_;
+			bool visible_;
+
+			std::uint8_t layer_;
+
 			RadeonRays::matrix transform_;
 			RadeonRays::matrix transformInverse_;
 		};

@@ -35,9 +35,9 @@ namespace octoon
 				// http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 				float temp = kelvin / 100;
 				float temp60 = std::max(0.0f, temp - 60);
-				float red = temp <= 66 ? 255 : 329.698727446 * pow(temp60, -0.1332047592);
-				float green = temp <= 66 ? 99.4708025861 * log(temp) - 161.1195681661 : 288.1221695283 * pow(temp60, -0.0755148492);
-				float blue = temp >= 66 ? 255 : (temp <= 19 ? 0 : 138.5177312231 * log(temp - 10) - 305.0447927307);
+				float red = temp <= 66 ? 255 : 329.698727446f * pow(temp60, -0.1332047592f);
+				float green = temp <= 66 ? 99.4708025861f * log(temp) - 161.1195681661f : 288.1221695283f * pow(temp60, -0.0755148492f);
+				float blue = temp >= 66 ? 255 : (temp <= 19 ? 0 : 138.5177312231f * log(temp - 10) - 305.0447927307f);
 
 				red = saturate(std::pow(red / 255.0f, 2.2f));
 				green = saturate(std::pow(green / 255.0f, 2.2f));

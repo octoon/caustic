@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <vector>
 #include <atomic>
-#include <memory>
 #include <radeon_rays.h>
 #include <radeon_rays_cl.h>
 #include <memory>
@@ -51,7 +50,7 @@ namespace octoon
 
 			const std::uint32_t* data() const noexcept;
 
-			void render(const Scene& scene, std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept;
+			void render(const Camera& camera, std::uint32_t frame, std::uint32_t x, std::uint32_t y, std::uint32_t w, std::uint32_t h) noexcept;
 
 		private:
 			bool init_data();
@@ -78,7 +77,7 @@ namespace octoon
 
 			void ColorTonemapping(std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size) noexcept;
 
-			void Estimate(const Camera& camera, const Scene& scene, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size);
+			void Estimate(const Camera& camera, std::uint32_t frame, const RadeonRays::int2& offset, const RadeonRays::int2& size);
 
 		private:
 			std::uint32_t width_;

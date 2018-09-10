@@ -51,8 +51,6 @@ namespace octoon
 			std::thread thread_;
 			std::queue<std::packaged_task<std::uint32_t()>> task_;
 			std::vector<std::future<std::uint32_t>> queues_;
-
-			std::shared_ptr<Scene> scene_;
 		};
 	}
 }

@@ -44,16 +44,14 @@ namespace octoon
 
 			RadeonRays::matrix transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0.f, 1.f, 3.f, 1);
 
-			auto camera = std::make_shared<FilmCamera>();
+			static auto camera = std::make_shared<FilmCamera>();
 			camera->setTransform(transform, transform);
+			camera->setActive(true);
 
-			auto sphereLight = std::make_shared<SphereLight>(RadeonRays::float3(0.0f, 1.5f, 0.0f), RadeonRays::float3(28.0f, 28.0f, 28.0f));
+			static auto sphereLight = std::make_shared<SphereLight>(RadeonRays::float3(0.0f, 1.5f, 0.0f), RadeonRays::float3(28.0f, 28.0f, 28.0f));
 			sphereLight->setRadius(0.1f);
 			sphereLight->setTemperature(6000);
-
-			scene_ = std::make_shared<Scene>();
-			scene_->addRenderObject(std::move(sphereLight));
-			scene_->addRenderObject(std::move(camera));
+			sphereLight->setActive(true);
 
  			thread_ = std::thread(std::bind(&System::thread, this));
 		}
@@ -91,10 +89,14 @@ namespace octoon
 
 			std::packaged_task<std::uint32_t()> task([=]()
 			{
-				pipeline_->render(*scene_, frame,
-					x, y,
-					std::min<std::uint32_t>(tileWidth_, width_ - x),
-					std::min<std::uint32_t>(tileHeight_, height_ - y));
+				auto& cameras = RenderScene::instance().getCameraList();
+				for (auto& camera : cameras)
+				{
+					pipeline_->render(*camera, frame,
+						x, y,
+						std::min<std::uint32_t>(tileWidth_, width_ - x),
+						std::min<std::uint32_t>(tileHeight_, height_ - y));
+				}
 
 				return tile;
 			});
@@ -113,10 +115,14 @@ namespace octoon
 		{
 			std::packaged_task<std::uint32_t()> task([=]()
 			{
-				pipeline_->render(*scene_, frame,
-					0, 0,
-					width_, height_
-				);
+				auto& cameras = RenderScene::instance().getCameraList();
+				for (auto& camera : cameras)
+				{
+					pipeline_->render(*camera, frame,
+						0, 0,
+						width_, height_
+					);
+				}
 
 				return 0;
 			});

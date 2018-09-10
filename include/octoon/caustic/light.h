@@ -1,14 +1,14 @@
 #ifndef OCTOON_CAUSTIC_LIGHT_H_
 #define OCTOON_CAUSTIC_LIGHT_H_
 
-#include <octoon/caustic/object.h>
+#include <octoon/caustic/render_object.h>
 #include <octoon/caustic/material.h>
 
 namespace octoon
 {
 	namespace caustic
 	{
-		class Light : public Object
+		class Light : public RenderObject
 		{
 		public:
 			Light() noexcept;
