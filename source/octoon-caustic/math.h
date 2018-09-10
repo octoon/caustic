@@ -195,6 +195,13 @@ namespace octoon
 
 		return H;
 	}
+
+	inline RadeonRays::float3 TangentToWorld(const RadeonRays::float3& H, const RadeonRays::float3& N)
+	{
+		RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0, 0, 1) : RadeonRays::float3(1, 0, 0);
+		RadeonRays::float3 X = RadeonRays::normalize(RadeonRays::cross(Y, N));
+		return RadeonRays::normalize(X * H.x + RadeonRays::cross(N, X) * H.y + N * H.z);
+	}
 }
 
 #endif

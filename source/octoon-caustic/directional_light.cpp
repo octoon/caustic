@@ -1,5 +1,4 @@
 #include <octoon/caustic/directional_light.h>
-#include <octoon/caustic/directional_light.h>
 #include "disney.h"
 
 namespace octoon
@@ -7,6 +6,7 @@ namespace octoon
 	namespace caustic
 	{
 		DirectionalLight::DirectionalLight() noexcept
+			: direction_(0, 1, 0)
 		{
 		}
 
@@ -18,6 +18,18 @@ namespace octoon
 
 		DirectionalLight::~DirectionalLight() noexcept
 		{
+		}
+		
+		void 
+		DirectionalLight::setDirection(const RadeonRays::float3& dir) noexcept
+		{
+			direction_ = dir;
+		}
+
+		RadeonRays::float3 
+		DirectionalLight::getDirection() const noexcept
+		{
+			return direction_;
 		}
 
 		RadeonRays::float4

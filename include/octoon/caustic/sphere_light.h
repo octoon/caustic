@@ -11,8 +11,7 @@ namespace octoon
 		{
 		public:
 			SphereLight() noexcept;
-			SphereLight(const RadeonRays::float3& pos, const RadeonRays::float3& color) noexcept;
-			SphereLight(const RadeonRays::float3& pos, const RadeonRays::float3& color, float radius) noexcept;
+			SphereLight(const RadeonRays::float3& pos, const RadeonRays::float3& color, float radius = 1.0f) noexcept;
 			virtual ~SphereLight() noexcept;
 
 			void setRadius(float radius) noexcept;

@@ -11,16 +11,11 @@ namespace octoon
 		{
 		}
 
-		SphereLight::SphereLight(const RadeonRays::float3& pos, const RadeonRays::float3& color) noexcept
+		SphereLight::SphereLight(const RadeonRays::float3& pos, const RadeonRays::float3& color, float radius) noexcept
 		{
 			RadeonRays::matrix transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, pos.x, pos.y, pos.z, 1);
 			this->setTransform(transform, transform);
 			this->setColor(color);
-		}
-
-		SphereLight::SphereLight(const RadeonRays::float3& pos, const RadeonRays::float3& color, float radius) noexcept
-			: SphereLight(pos, color)
-		{
 			this->setRadius(radius);
 		}
 

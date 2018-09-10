@@ -145,13 +145,6 @@ namespace octoon
 			return RadeonRays::float4(0, 0, 0, 1);
 		}
 
-		RadeonRays::float3 TangentToWorld(const RadeonRays::float3& H, const RadeonRays::float3& N)
-		{
-			RadeonRays::float3 Y = std::abs(N.z) < 0.999f ? RadeonRays::float3(0, 0, 1) : RadeonRays::float3(1, 0, 0);
-			RadeonRays::float3 X = RadeonRays::normalize(RadeonRays::cross(Y, N));
-			return RadeonRays::normalize(X * H.x + RadeonRays::cross(N, X) * H.y + N * H.z);
-		}
-
 		RadeonRays::float3 LobeDirection(const RadeonRays::float3& n, float roughness, const RadeonRays::float2& Xi)
 		{
 			auto H = ImportanceSampleGGX(Xi, roughness);
