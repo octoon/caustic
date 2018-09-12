@@ -1,5 +1,5 @@
 #include "cranley_patterson.h"
-#include "math.h"
+#include <octoon/caustic/math.h>
 
 namespace octoon
 {

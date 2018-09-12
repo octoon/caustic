@@ -3,6 +3,11 @@ SET(LIB_NAME octoon-caustic)
 SET(HEADER_PATH ${OCTOON_PATH_HEADER}/caustic)
 SET(SOURCE_PATH ${OCTOON_PATH_SOURCE}/${LIB_NAME})
 
+SET(MATH_LIST
+	${HEADER_PATH}/math.h
+)
+SOURCE_GROUP("octoon-caustic\\math" FILES ${MATH_LIST})
+
 SET(SEQUENCES_LIST
 	${SOURCE_PATH}/cranley_patterson.h
 	${SOURCE_PATH}/cranley_patterson.cpp
@@ -20,7 +25,6 @@ SOURCE_GROUP("octoon-caustic\\sequences" FILES ${SEQUENCES_LIST})
 SET(BXDF_LIST
 	${SOURCE_PATH}/disney.h
 	${SOURCE_PATH}/disney.cpp
-	${SOURCE_PATH}/math.h
 )
 SOURCE_GROUP("octoon-caustic\\BRDF" FILES ${BXDF_LIST})
 
@@ -87,6 +91,14 @@ SET(PIPELINE_LIST
 )
 SOURCE_GROUP("octoon-caustic\\pipeline" FILES ${PIPELINE_LIST})
 
+SET(SPECTRUM_LIST
+	${HEADER_PATH}/spectrum.h
+	${SOURCE_PATH}/spectrum.cpp
+	${HEADER_PATH}/rgb_spectrum.h
+	${SOURCE_PATH}/rgb_spectrum.cpp
+)
+SOURCE_GROUP("octoon-caustic\\spectrum" FILES ${SPECTRUM_LIST})
+
 SET(TONEMAPPING_LIST
 	${HEADER_PATH}/tonemapping.h
 	${SOURCE_PATH}/tonemapping.cpp
@@ -95,17 +107,17 @@ SET(TONEMAPPING_LIST
 )
 SOURCE_GROUP("octoon-caustic\\tonemapping" FILES ${TONEMAPPING_LIST})
 
-SET(OCTOON_LIST
+SET(SYSTEM_LIST
 	${HEADER_PATH}/system.h
 	${SOURCE_PATH}/system.cpp
 	${SOURCE_PATH}/main.cpp
 	${SOURCE_PATH}/tiny_obj_loader.cpp
 	${SOURCE_PATH}/tiny_obj_loader.h
 )
-SOURCE_GROUP("octoon-caustic" FILES ${OCTOON_LIST})
+SOURCE_GROUP("octoon-caustic" FILES ${SYSTEM_LIST})
 
 ADD_EXECUTABLE(${LIB_NAME} 
-	${OCTOON_LIST} 
+	${MATH_LIST}
 	${CAMERA_LIST} 
 	${LIGHT_LIST}
 	${GEOMETRY_LIST}
@@ -117,6 +129,8 @@ ADD_EXECUTABLE(${LIB_NAME}
 	${BXDF_LIST}
 	${PIPELINE_LIST}
 	${TONEMAPPING_LIST}
+	${SPECTRUM_LIST}
+	${SYSTEM_LIST} 
 )
 
 TARGET_LINK_LIBRARIES(${LIB_NAME} PUBLIC glfw)

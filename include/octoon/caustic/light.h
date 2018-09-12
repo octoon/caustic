@@ -2,7 +2,7 @@
 #define OCTOON_CAUSTIC_LIGHT_H_
 
 #include <octoon/caustic/render_object.h>
-#include <octoon/caustic/material.h>
+#include <octoon/caustic/spectrum.h>
 
 namespace octoon
 {
@@ -21,8 +21,8 @@ namespace octoon
 			float getTemperature() const noexcept;
 			const RadeonRays::float3& getColorTemperature() const noexcept;
 
-			virtual RadeonRays::float4 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const Material& mat, const RadeonRays::float2& Xi) const noexcept;
-			virtual RadeonRays::float3 Li(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const Material& mat, const RadeonRays::float2& Xi) const noexcept;
+			virtual RadeonRays::float4 sample(const RadeonRays::float3& P, const RadeonRays::float3& N, const class Material& mat, const RadeonRays::float2& Xi) const noexcept;
+			virtual RadeonRays::float3 Li(const RadeonRays::float3& N, const RadeonRays::float3& V, const RadeonRays::float3& L, const class Material& mat, const RadeonRays::float2& Xi) const noexcept;
 
 		private:
 			Light(const Light&) noexcept = delete;
