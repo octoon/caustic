@@ -1,5 +1,5 @@
-#ifndef OCTOON_MATH_H_
-#define OCTOON_MATH_H_
+#ifndef OCTOON_CAUSTIC_MATH_H_
+#define OCTOON_CAUSTIC_MATH_H_
 
 #include <radeon_rays.h>
 #include <cassert>

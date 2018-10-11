@@ -7,18 +7,7 @@ namespace octoon
 {
 	namespace caustic
 	{
-		class Spectrum final : public RGBSpectrum
-		{
-		public:
-			Spectrum() noexcept;
-			~Spectrum() noexcept;
-
-			template<typename ...Args>
-			Spectrum(Args&&... args)
-				: RGBSpectrum(std::forward<Args>(args)...)
-			{
-			}
-		};
+		typedef RGBSpectrum Spectrum;
 	}
 }
 
