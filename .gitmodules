@@ -1,3 +1,6 @@
 [submodule "contrib/RadeonRays_SDK"]
 	path = contrib/RadeonRays_SDK
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/RadeonRays_SDK.git
+[submodule "contrib/glfw"]
+	path = contrib/glfw
+	url = https://github.com/glfw/glfw.git

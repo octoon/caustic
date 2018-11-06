@@ -1,5 +1,5 @@
 #include "hammersley.h"
-#include "math.h"
+#include <octoon/caustic/math.h>
 #include <assert.h>
 
 namespace octoon
